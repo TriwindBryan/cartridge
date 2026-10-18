@@ -1,0 +1,74 @@
+{
+  "name": "cartridge-launcher",
+  "productName": "Cartridge",
+  "version": "1.28.0",
+  "description": "A launcher for decompiled and recompiled retro game ports. Bring your ROMs, it does the rest.",
+  "main": "main.js",
+  "cartridge": {
+    "kofi": "https://ko-fi.com/triwind",
+    "repo": "TriwindBryan/cartridge",
+    "itch": ""
+  },
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/core.test.js",
+    "dist": "electron-builder --win portable",
+    "dist:dir": "electron-builder --win dir",
+    "dist:msi": "electron-builder --win msi"
+  },
+  "devDependencies": {
+    "electron": "^37.2.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.cartridge.launcher",
+    "productName": "Cartridge",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "CHANGELOG.md",
+      "src/**/*",
+      "renderer/**/*",
+      "catalog/**/*",
+      "build/icon.png",
+      "package.json",
+      "LICENSE"
+    ],
+    "asarUnpack": [
+      "src/core/rom.js",
+      "src/core/inspect-worker.js"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        "portable",
+        "msi"
+      ]
+    },
+    "portable": {
+      "artifactName": "Cartridge-${version}-Portable.exe"
+    },
+    "msi": {
+      "artifactName": "Cartridge-${version}-Setup.msi",
+      "oneClick": false,
+      "perMachine": false,
+      "runAfterFinish": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Cartridge",
+      "upgradeCode": "6f3c2b1e-7a4d-4c8e-9b21-c4a7d2e5f091",
+      "warningsAsErrors": false
+    },
+    "msiProjectCreated": "build/msi-hook.js"
+  },
+  "author": "TriwindBryan",
+  "homepage": "https://github.com/TriwindBryan/cartridge",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TriwindBryan/cartridge.git"
+  }
+}

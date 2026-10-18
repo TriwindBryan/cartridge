@@ -1,0 +1,328 @@
+'use strict';
+const { app, BrowserWindow, ipcMain, dialog, shell, clipboard, nativeTheme, net } = require('electron');
+const path = require('path');
+const fs = require('fs');
+const { Library } = require('./src/core/library');
+const { Inspector } = require('./src/core/inspector');
+
+// ---------- log file (%APPDATA%\Cartridge\cartridge.log): what started, how long it took, and anything that froze the window
+let logFile = null;
+function log(msg) {
+  const line = `${new Date().toISOString()}  ${msg}\n`;
+  try { if (logFile) fs.appendFileSync(logFile, line); } catch { /* never let logging break anything */ }
+}
+function startLog() {
+  logFile = path.join(app.getPath('userData'), 'cartridge.log');
+  try {
+    fs.mkdirSync(path.dirname(logFile), { recursive: true });
+    // keep it small: start over once it passes 512 KB
+    if (fs.existsSync(logFile) && fs.statSync(logFile).size > 512 * 1024) fs.writeFileSync(logFile, '');
+  } catch { /* ignore */ }
+  log(`---- Cartridge ${app.getVersion()} starting (Windows ${require('os').release()}, Electron ${process.versions.electron})`);
+  // if the main process is ever stuck for more than 2 seconds, write down for how long
+  let last = Date.now();
+  const tick = setInterval(() => {
+    const now = Date.now();
+    if (now - last > 2500) log(`Main process was busy for ${((now - last - 500) / 1000).toFixed(1)}s`);
+    last = now;
+  }, 500);
+  tick.unref();
+}
+
+let win;
+let lib;
+
+function createWindow() {
+  nativeTheme.themeSource = 'dark';
+  win = new BrowserWindow({
+    width: 1440, height: 900, minWidth: 1000, minHeight: 640,
+    backgroundColor: '#14161b',
+    title: `Cartridge ${app.getVersion().replace(/\.0$/, '')}`,
+    icon: path.join(__dirname, 'build', 'icon.png'),
+    autoHideMenuBar: true,
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true },
+  });
+  win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  win.webContents.setWindowOpenHandler(({ url }) => { if (/^https:\/\//.test(url)) shell.openExternal(url); return { action: 'deny' }; });
+  win.webContents.on('will-navigate', (e) => e.preventDefault());
+  win.once('ready-to-show', () => log('Window ready'));
+  win.on('unresponsive', () => log('Window stopped responding'));
+  win.on('responsive', () => log('Window responding again'));
+  win.webContents.on('render-process-gone', (_e, d) => log(`Window process ended: ${d.reason}`));
+}
+
+// Many changes can arrive in a burst (a scan, release checks, covers). Send the window one update per burst, not one per change.
+let pushTimer = null;
+const push = () => {
+  if (pushTimer) return;
+  pushTimer = setTimeout(() => {
+    pushTimer = null;
+    if (!win || win.isDestroyed()) return;
+    const t = Date.now();
+    win.webContents.send('state', lib.snapshot());
+    const ms = Date.now() - t;
+    if (ms > 500) log(`Sending the library to the window took ${ms}ms (${lib.state.roms.length} ROMs)`);
+  }, 120);
+};
+
+app.whenReady().then(async () => {
+  startLog();
+  const t0 = Date.now();
+  // the ROM checker runs on its own thread; in the installed app it lives outside app.asar (see asarUnpack)
+  const inspector = new Inspector(path.join(__dirname, 'src', 'core', 'inspect-worker.js').replace(/app\.asar([\\/])/, 'app.asar.unpacked$1'), log);
+  lib = new Library({
+    dataDir: app.getPath('userData'),
+    catalogFile: path.join(__dirname, 'catalog', 'games.json'),
+    hooks: {
+      copyToClipboard: (t) => clipboard.writeText(t),
+      revealFile: (p) => shell.showItemInFolder(p),
+      // Chromium's network stack (same as a browser) so sites like Metacritic answer normally
+      fetch: (url, opts) => net.fetch(url, opts),
+      inspectRom: (file) => inspector.inspect(file),
+      log,
+    },
+  });
+  await lib.load();
+  log(`Library loaded in ${Date.now() - t0}ms: ${lib.state.roms.length} ROMs, ${(lib.state.settings.romFolders || []).length} ROM folder(s)`);
+  app.on('before-quit', () => inspector.close());
+  lib.on('change', push);
+  // Bring the launcher back to the front when a game closes, so a controller keeps working without a mouse.
+  lib.on('exited', () => { if (win && !win.isDestroyed()) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); } });
+  lib.on('job', (id, job) => { if (win && !win.isDestroyed()) win.webContents.send('job', id, Library.publicJob(job)); });
+
+  const handle = (name, fn) => ipcMain.handle(name, async (_e, ...args) => {
+    try { return { ok: true, value: await fn(...args) }; } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  handle('state', () => lib.snapshot());
+  handle('refresh', (force) => lib.refreshReleases({ force }));
+  handle('install', (id) => lib.install(id));
+  handle('cancel', (id) => lib.cancel(id));
+  handle('uninstall', async (id) => {
+    const g = lib.game(id);
+    const { response } = await dialog.showMessageBox(win, {
+      type: 'warning', buttons: ['Uninstall', 'Keep it'], defaultId: 1, cancelId: 1,
+      message: `Uninstall ${g.port}?`, detail: 'This deletes the game folder, including any saves and settings stored inside it. Your ROM stays in your library.',
+    });
+    if (response === 0) await lib.uninstall(id);
+    return response === 0;
+  });
+  handle('launch', (id, opts) => lib.launch(id, opts));
+  handle('addRoms', (paths) => lib.addRoms(paths));
+  handle('pickRoms', async (mode) => {
+    const res = await dialog.showOpenDialog(win, mode === 'folder'
+      ? { title: 'Choose a folder of ROMs', properties: ['openDirectory'] }
+      : { title: 'Choose ROM files', properties: ['openFile', 'multiSelections'], filters: [
+        { name: 'ROMs and disc images', extensions: [...require('./src/core/rom').ROM_EXTENSIONS.map((e) => e.slice(1)), 'zip', '7z'] },
+        { name: 'All files', extensions: ['*'] },
+      ] });
+    if (res.canceled || !res.filePaths.length) return null;
+    return lib.addRoms(res.filePaths);
+  });
+  handle('removeRom', (id) => lib.removeRom(id));
+  handle('addRomFolder', async () => {
+    const res = await dialog.showOpenDialog(win, { title: 'Choose the folder where you keep your ROMs (subfolders are searched too)', properties: ['openDirectory'] });
+    if (res.canceled || !res.filePaths.length) return null;
+    return lib.addRomFolder(res.filePaths[0]);
+  });
+  handle('removeRomFolder', (dir) => lib.removeRomFolder(dir));
+  handle('scanRomFolders', (full) => lib.scanRomFolders({ full }));
+  handle('assignRom', (gameId, romId) => lib.assignRom(gameId, romId));
+  handle('settings', (patch) => lib.updateSettings(patch));
+  handle('checkAppUpdate', (force) => lib.checkAppUpdate({ force: !!force }));
+  handle('credits', () => lib.credits());
+  handle('romHelp', (id) => lib.romHelp(id));
+  handle('pickBackground', async () => {
+    const res = await dialog.showOpenDialog(win, { title: 'Choose a background image', properties: ['openFile'],
+      filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'] }] });
+    if (res.canceled || !res.filePaths.length) return null;
+    const fs = require('fs');
+    const dir = path.join(app.getPath('userData'), 'backgrounds');
+    fs.mkdirSync(dir, { recursive: true });
+    // keep our own copy so moving or deleting the original doesn't break the background
+    for (const f of fs.readdirSync(dir)) fs.rmSync(path.join(dir, f), { force: true });
+    const dest = path.join(dir, `background-${Date.now()}${path.extname(res.filePaths[0]).toLowerCase()}`);
+    fs.copyFileSync(res.filePaths[0], dest);
+    await lib.updateSettings({ backgroundImage: dest });
+    return dest;
+  });
+  handle('clearBackground', async () => {
+    await lib.updateSettings({ backgroundImage: '' });
+    const fs = require('fs');
+    const dir = path.join(app.getPath('userData'), 'backgrounds');
+    if (fs.existsSync(dir)) for (const f of fs.readdirSync(dir)) fs.rmSync(path.join(dir, f), { force: true });
+    return true;
+  });
+  handle('pickLibraryDir', async () => {
+    const res = await dialog.showOpenDialog(win, { title: 'Where should games and ROMs live?', properties: ['openDirectory', 'createDirectory'] });
+    if (res.canceled || !res.filePaths.length) return null;
+    await lib.updateSettings({ libraryDir: res.filePaths[0] });
+    return res.filePaths[0];
+  });
+  handle('openFolder', (id) => {
+    const i = lib.state.installed[id];
+    return shell.openPath(i ? path.dirname(i.exe) : lib.dirs.root);
+  });
+  handle('openPath', (p) => shell.openPath(p || lib.dirs.root));
+  handle('reveal', (p) => shell.showItemInFolder(p));
+  handle('openLog', () => shell.openPath(logFile));
+  handle('log', (text) => { log(`UI: ${String(text).slice(0, 500)}`); });
+  handle('openUrl', (url) => { if (/^https:\/\//.test(url)) return shell.openExternal(url); return null; });
+
+  // ---------- save backups ----------
+  handle('listBackups', (id) => lib.listBackups(id));
+  handle('backupNow', (id) => lib.backupGame(id, 'manual'));
+  handle('backupAll', () => lib.backupAll());
+  handle('restoreBackup', async (id, backupId) => {
+    const g = lib.game(id);
+    const b = (await lib.listBackups(id)).find((x) => x.id === backupId);
+    const when = b ? new Date(b.createdAt).toLocaleString() : '';
+    const { response } = await dialog.showMessageBox(win, {
+      type: 'warning', buttons: ['Restore', 'Cancel'], defaultId: 0, cancelId: 1,
+      message: `Restore ${g.port} saves from ${when}?`,
+      detail: 'Your current saves are backed up first, so you can undo this from the same list.',
+    });
+    if (response !== 0) return { cancelled: true };
+    await lib.restoreBackup(id, backupId);
+    return { restored: true };
+  });
+  handle('openBackups', (id) => {
+    const dir = id ? path.join(lib.dirs.backups, id) : lib.dirs.backups;
+    require('fs').mkdirSync(dir, { recursive: true });
+    return shell.openPath(dir);
+  });
+  handle('pickBackupDir', async () => {
+    const res = await dialog.showOpenDialog(win, { title: 'Where should save backups go? (A OneDrive or Google Drive folder keeps them in the cloud too)', properties: ['openDirectory', 'createDirectory'] });
+    if (res.canceled || !res.filePaths.length) return null;
+    await lib.updateSettings({ backupDir: res.filePaths[0] });
+    return res.filePaths[0];
+  });
+  lib.on('backup', (id, b) => { if (win && !win.isDestroyed()) win.webContents.send('backup', id, { id: b.id, reason: b.reason, files: b.files }); });
+
+  // ---------- Add to Steam ----------
+  const steam = require('./src/core/steam');
+  const { spawn } = require('child_process');
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  async function steamInfo() {
+    const root = await steam.findSteamRoot();
+    if (!root) return { found: false };
+    const user = await steam.findUserDir(root);
+    return { found: !!user, root, userId: user && user.id, userDir: user && user.dir, running: await steam.isSteamRunning() };
+  }
+  async function closeSteam(root) {
+    const exe = process.platform === 'win32' ? path.join(root, 'steam.exe') : 'steam';
+    try { spawn(exe, ['-shutdown'], { detached: true, stdio: 'ignore' }).unref(); } catch { /* fall back to the URL */ }
+    shell.openExternal('steam://exit').catch(() => {});
+    for (let i = 0; i < 40; i++) { await sleep(500); if (!(await steam.isSteamRunning())) return true; }
+    return false;
+  }
+  function startSteam(root) {
+    const exe = process.platform === 'win32' ? path.join(root, 'steam.exe') : 'steam';
+    try { spawn(exe, [], { detached: true, stdio: 'ignore' }).unref(); } catch { shell.openExternal('steam://open/games').catch(() => {}); }
+  }
+  const fromDataUrl = (u) => (typeof u === 'string' && u.startsWith('data:image/png;base64,') ? Buffer.from(u.slice(22), 'base64') : null);
+
+  handle('steamStatus', async () => { const s = await steamInfo(); return { found: s.found, running: !!s.running }; });
+
+  /** items: [{ id, art: { portrait, wide, hero, logo } }] — one Steam restart for any number of games. */
+  handle('addToSteam', async (items) => {
+    const info = await steamInfo();
+    if (!info.found) throw new Error("Couldn't find Steam on this PC. Install Steam and sign in once, then try again.");
+    const wasRunning = info.running;
+    if (wasRunning) {
+      const { response } = await dialog.showMessageBox(win, {
+        type: 'question', buttons: ['Close Steam and add', 'Cancel'], defaultId: 0, cancelId: 1,
+        message: 'Steam needs to close for a moment',
+        detail: 'Steam rewrites its shortcut list when it exits, so it has to be closed while Cartridge adds games. It reopens straight after.',
+      });
+      if (response !== 0) return { cancelled: true };
+      if (!(await closeSteam(info.root))) throw new Error("Steam didn't close. Close it from the system tray and try again.");
+    }
+    const added = [];
+    for (const { id, art } of items) {
+      const g = lib.game(id);
+      const inst = lib.state.installed[id];
+      if (!inst || !inst.exe) continue;
+      await lib.prepareRom(g, inst).catch(() => {}); // put the ROM in place so launching from Steam just works
+      const appid = await steam.addShortcut(info.userDir, {
+        name: g.port === g.title ? g.title : `${g.title} (${g.port})`,
+        exe: inst.exe, startDir: path.dirname(inst.exe), icon: inst.exe,
+        tags: ['Cartridge', (lib.systems[g.system] || {}).name || g.system],
+      });
+      await steam.writeArtwork(info.userDir, appid, art ? {
+        portrait: fromDataUrl(art.portrait), wide: fromDataUrl(art.wide), hero: fromDataUrl(art.hero), logo: fromDataUrl(art.logo),
+      } : null);
+      lib.state.steam = lib.state.steam || {};
+      lib.state.steam[id] = { appid, userId: info.userId, exe: inst.exe, addedAt: Date.now() };
+      added.push(id);
+    }
+    await lib.save();
+    lib.emitChange();
+    if (wasRunning) startSteam(info.root);
+    return { added, restarted: wasRunning };
+  });
+
+  handle('removeFromSteam', async (id) => {
+    const info = await steamInfo();
+    const rec = (lib.state.steam || {})[id];
+    if (!info.found || !rec) { if (rec) { delete lib.state.steam[id]; await lib.save(); lib.emitChange(); } return { removed: 0 }; }
+    const wasRunning = info.running;
+    if (wasRunning) {
+      const { response } = await dialog.showMessageBox(win, { type: 'question', buttons: ['Close Steam and remove', 'Cancel'], defaultId: 0, cancelId: 1,
+        message: 'Steam needs to close for a moment', detail: 'It reopens straight after.' });
+      if (response !== 0) return { cancelled: true };
+      await closeSteam(info.root);
+    }
+    const removed = await steam.removeShortcut(info.userDir, rec.exe);
+    await steam.removeArtwork(info.userDir, rec.appid);
+    delete lib.state.steam[id];
+    await lib.save();
+    lib.emitChange();
+    if (wasRunning) startSteam(info.root);
+    return { removed };
+  });
+
+  handle('copy', (text) => clipboard.writeText(String(text)));
+  handle('discover', (q) => require('./src/core/github').discover(q, lib.state.settings.githubToken));
+  handle('addUserGame', (entry) => lib.addUserGame(entry));
+  handle('communityList', (force) => lib.communityList({ force }));
+  handle('addCommunityGame', (key) => lib.addCommunityGame(key));
+  handle('metascore', (id, force) => lib.metascore(id, { force }));
+  // cover art
+  const coverKinds = new Set(['game', 'rom', 'title']);
+  handle('cover', (kind, ref) => { if (!coverKinds.has(kind)) throw new Error('Bad cover kind'); return lib.cover(kind, ref); });
+  handle('pickCover', async (kind, id) => {
+    const res = await dialog.showOpenDialog(win, { title: 'Choose a cover image', properties: ['openFile'],
+      filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }] });
+    if (res.canceled || !res.filePaths.length) return null;
+    return lib.setCustomCover(kind, id, res.filePaths[0]);
+  });
+  handle('setCoverFile', (kind, id, file) => lib.setCustomCover(kind, id, file));
+  handle('resetCover', (kind, id) => lib.resetCover(kind, id));
+  handle('findAllCovers', () => lib.findAllCovers({ onProgress: (done, total) => win && win.webContents.send('coverProgress', { done, total }) }));
+  handle('imageData', async (file) => {
+    // only images Cartridge saved itself (covers), handed to the canvas that draws Steam artwork
+    const full = path.resolve(file);
+    if (!full.startsWith(path.resolve(lib.coverDir) + path.sep)) throw new Error('Not a cover image');
+    const buf = await require('fs').promises.readFile(full);
+    const type = require('./src/core/covers').imageType(buf);
+    if (!type) throw new Error('Not an image');
+    return `data:image/${type === 'jpg' ? 'jpeg' : type};base64,${buf.toString('base64')}`;
+  });
+  handle('removeUserGame', (id) => lib.removeUserGame(id));
+
+  createWindow();
+  const tr = Date.now();
+  lib.refreshReleases().then(() => log(`Checked ports for updates in ${((Date.now() - tr) / 1000).toFixed(1)}s`), (e) => log(`Checking ports for updates failed: ${e.message}`));
+  // Pick up any ROMs added to the saved folders since last time.
+  lib.on('scan', (on) => { if (win && !win.isDestroyed()) win.webContents.send('scan', on); });
+  setTimeout(async () => {
+    const report = await lib.scanRomFolders().catch(() => []);
+    const added = report.filter((r) => r.status === 'added');
+    if (added.length && win && !win.isDestroyed()) win.webContents.send('scanReport', report);
+  }, 1500);
+  // Is there a newer Cartridge? (quietly skipped when offline or before the first release exists)
+  setTimeout(() => lib.checkAppUpdate().catch(() => null), 8000);
+});
+
+app.on('window-all-closed', () => app.quit());
