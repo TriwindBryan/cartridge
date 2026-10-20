@@ -1,0 +1,59 @@
+# Builds Cartridge for Mac and Windows on GitHub's machines.
+# - Publishing a release on GitHub (tag v1.xx) builds both and attaches the files to that release.
+# - "Run workflow" on the Actions tab makes a test build; download it from the run's "Artifacts".
+name: Build Cartridge
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  mac:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: npm test
+      - name: Build the Mac apps (Apple Silicon and Intel)
+        run: npx electron-builder --mac dmg --arm64 --x64 --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cartridge-mac
+          path: dist/*.dmg
+      - name: Attach to the release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.dmg
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: npm test
+      - name: Build the Windows installer and portable exe
+        run: npx electron-builder --win portable msi --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cartridge-windows
+          path: |
+            dist/*.msi
+            dist/*-Portable.exe
+      - name: Attach to the release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.msi
+            dist/*-Portable.exe
