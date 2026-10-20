@@ -1,0 +1,1957 @@
+{
+  "version": 1,
+  "systems": {
+    "nes": {
+      "name": "NES",
+      "short": "NES",
+      "thumbs": "Nintendo_-_Nintendo_Entertainment_System",
+      "romDb": "no-intro/Nintendo - Nintendo Entertainment System.dat",
+      "color": "#d0412f"
+    },
+    "fds": {
+      "name": "Famicom Disk System",
+      "short": "FDS",
+      "thumbs": "Nintendo_-_Family_Computer_Disk_System",
+      "romDb": "no-intro/Nintendo - Family Computer Disk System.dat",
+      "color": "#b8322a"
+    },
+    "snes": {
+      "name": "Super Nintendo",
+      "short": "SNES",
+      "thumbs": "Nintendo_-_Super_Nintendo_Entertainment_System",
+      "romDb": "no-intro/Nintendo - Super Nintendo Entertainment System.dat",
+      "color": "#c4b5fd"
+    },
+    "vb": {
+      "name": "Virtual Boy",
+      "short": "VB",
+      "thumbs": "Nintendo_-_Virtual_Boy",
+      "romDb": "no-intro/Nintendo - Virtual Boy.dat",
+      "color": "#a3121b"
+    },
+    "n64": {
+      "name": "Nintendo 64",
+      "short": "N64",
+      "thumbs": "Nintendo_-_Nintendo_64",
+      "romDb": "no-intro/Nintendo - Nintendo 64.dat",
+      "color": "#14c46a"
+    },
+    "n64dd": {
+      "name": "Nintendo 64DD",
+      "short": "64DD",
+      "thumbs": "Nintendo_-_Nintendo_64DD",
+      "romDb": "no-intro/Nintendo - Nintendo 64DD.dat",
+      "color": "#0f8f50"
+    },
+    "gb": {
+      "name": "Game Boy",
+      "short": "GB",
+      "thumbs": "Nintendo_-_Game_Boy",
+      "romDb": "no-intro/Nintendo - Game Boy.dat",
+      "color": "#8bac0f"
+    },
+    "gbc": {
+      "name": "Game Boy Color",
+      "short": "GBC",
+      "thumbs": "Nintendo_-_Game_Boy_Color",
+      "romDb": "no-intro/Nintendo - Game Boy Color.dat",
+      "color": "#16a2d9"
+    },
+    "gba": {
+      "name": "Game Boy Advance",
+      "short": "GBA",
+      "thumbs": "Nintendo_-_Game_Boy_Advance",
+      "romDb": "no-intro/Nintendo - Game Boy Advance.dat",
+      "color": "#5a3fd8"
+    },
+    "pokemini": {
+      "name": "Pokémon mini",
+      "short": "MINI",
+      "thumbs": "Nintendo_-_Pokemon_Mini",
+      "romDb": "no-intro/Nintendo - Pokemon Mini.dat",
+      "color": "#e4b21c"
+    },
+    "nds": {
+      "name": "Nintendo DS",
+      "short": "NDS",
+      "thumbs": "Nintendo_-_Nintendo_DS",
+      "romDb": "no-intro/Nintendo - Nintendo DS.dat",
+      "color": "#9aa3ad"
+    },
+    "3ds": {
+      "name": "Nintendo 3DS",
+      "short": "3DS",
+      "thumbs": "Nintendo_-_Nintendo_3DS",
+      "color": "#c0392b"
+    },
+    "gc": {
+      "name": "GameCube",
+      "short": "GCN",
+      "thumbs": "Nintendo_-_GameCube",
+      "color": "#8b5cf6"
+    },
+    "wii": {
+      "name": "Wii",
+      "short": "WII",
+      "thumbs": "Nintendo_-_Wii",
+      "color": "#2fb4e8"
+    },
+    "wiiu": {
+      "name": "Wii U",
+      "short": "WIIU",
+      "thumbs": "Nintendo_-_Wii_U",
+      "color": "#0aa3c2"
+    },
+    "switch": {
+      "name": "Nintendo Switch",
+      "short": "NSW",
+      "color": "#e1251b"
+    },
+    "sg1000": {
+      "name": "Sega SG-1000",
+      "short": "SG",
+      "thumbs": "Sega_-_SG-1000",
+      "romDb": "no-intro/Sega - SG-1000.dat",
+      "color": "#3d5a99"
+    },
+    "sms": {
+      "name": "Sega Master System",
+      "short": "SMS",
+      "thumbs": "Sega_-_Master_System_-_Mark_III",
+      "romDb": "no-intro/Sega - Master System - Mark III.dat",
+      "color": "#2348a8"
+    },
+    "gg": {
+      "name": "Sega Game Gear",
+      "short": "GG",
+      "thumbs": "Sega_-_Game_Gear",
+      "romDb": "no-intro/Sega - Game Gear.dat",
+      "color": "#3a3a46"
+    },
+    "genesis": {
+      "name": "Sega Genesis",
+      "short": "GEN",
+      "thumbs": "Sega_-_Mega_Drive_-_Genesis",
+      "romDb": "no-intro/Sega - Mega Drive - Genesis.dat",
+      "color": "#1f4fd1"
+    },
+    "32x": {
+      "name": "Sega 32X",
+      "short": "32X",
+      "thumbs": "Sega_-_32X",
+      "romDb": "no-intro/Sega - 32X.dat",
+      "color": "#9b1c1c"
+    },
+    "segacd": {
+      "name": "Sega CD",
+      "short": "SCD",
+      "thumbs": "Sega_-_Mega-CD_-_Sega_CD",
+      "color": "#1b3f99"
+    },
+    "saturn": {
+      "name": "Sega Saturn",
+      "short": "SAT",
+      "thumbs": "Sega_-_Saturn",
+      "color": "#5b6170"
+    },
+    "dreamcast": {
+      "name": "Dreamcast",
+      "short": "DC",
+      "thumbs": "Sega_-_Dreamcast",
+      "color": "#f07a1a"
+    },
+    "ps1": {
+      "name": "PlayStation",
+      "short": "PS1",
+      "thumbs": "Sony_-_PlayStation",
+      "color": "#7d8a99"
+    },
+    "ps2": {
+      "name": "PlayStation 2",
+      "short": "PS2",
+      "thumbs": "Sony_-_PlayStation_2",
+      "color": "#2a54b8"
+    },
+    "ps3": {
+      "name": "PlayStation 3",
+      "short": "PS3",
+      "thumbs": "Sony_-_PlayStation_3",
+      "color": "#1d3c8f"
+    },
+    "psp": {
+      "name": "PlayStation Portable",
+      "short": "PSP",
+      "thumbs": "Sony_-_PlayStation_Portable",
+      "color": "#3a3f4a"
+    },
+    "vita": {
+      "name": "PlayStation Vita",
+      "short": "VITA",
+      "thumbs": "Sony_-_PlayStation_Vita",
+      "color": "#2a6fdb"
+    },
+    "xbox": {
+      "name": "Xbox",
+      "short": "XBOX",
+      "thumbs": "Microsoft_-_Xbox",
+      "color": "#3e9b1d"
+    },
+    "x360": {
+      "name": "Xbox 360",
+      "short": "360",
+      "color": "#5dc21e",
+      "thumbs": "Microsoft_-_Xbox_360"
+    },
+    "pce": {
+      "name": "PC Engine / TurboGrafx-16",
+      "short": "PCE",
+      "thumbs": "NEC_-_PC_Engine_-_TurboGrafx_16",
+      "romDb": "no-intro/NEC - PC Engine - TurboGrafx 16.dat",
+      "color": "#d35400"
+    },
+    "pcecd": {
+      "name": "PC Engine CD / TurboGrafx-CD",
+      "short": "PCECD",
+      "thumbs": "NEC_-_PC_Engine_CD_-_TurboGrafx-CD",
+      "color": "#b34700"
+    },
+    "sgx": {
+      "name": "PC Engine SuperGrafx",
+      "short": "SGX",
+      "thumbs": "NEC_-_PC_Engine_SuperGrafx",
+      "romDb": "no-intro/NEC - PC Engine SuperGrafx.dat",
+      "color": "#8c3b00"
+    },
+    "neocd": {
+      "name": "Neo Geo CD",
+      "short": "NGCD",
+      "thumbs": "SNK_-_Neo_Geo_CD",
+      "color": "#a8861c"
+    },
+    "ngp": {
+      "name": "Neo Geo Pocket",
+      "short": "NGP",
+      "thumbs": "SNK_-_Neo_Geo_Pocket",
+      "romDb": "no-intro/SNK - Neo Geo Pocket.dat",
+      "color": "#6b6f78"
+    },
+    "ngpc": {
+      "name": "Neo Geo Pocket Color",
+      "short": "NGPC",
+      "thumbs": "SNK_-_Neo_Geo_Pocket_Color",
+      "romDb": "no-intro/SNK - Neo Geo Pocket Color.dat",
+      "color": "#2b7bb9"
+    },
+    "ws": {
+      "name": "WonderSwan",
+      "short": "WS",
+      "thumbs": "Bandai_-_WonderSwan",
+      "romDb": "no-intro/Bandai - WonderSwan.dat",
+      "color": "#7f8c8d"
+    },
+    "wsc": {
+      "name": "WonderSwan Color",
+      "short": "WSC",
+      "thumbs": "Bandai_-_WonderSwan_Color",
+      "romDb": "no-intro/Bandai - WonderSwan Color.dat",
+      "color": "#16a085"
+    },
+    "a2600": {
+      "name": "Atari 2600",
+      "short": "2600",
+      "thumbs": "Atari_-_2600",
+      "romDb": "no-intro/Atari - 2600.dat",
+      "color": "#a0522d"
+    },
+    "a5200": {
+      "name": "Atari 5200",
+      "short": "5200",
+      "thumbs": "Atari_-_5200",
+      "romDb": "no-intro/Atari - 5200.dat",
+      "color": "#7a4a2a"
+    },
+    "a7800": {
+      "name": "Atari 7800",
+      "short": "7800",
+      "thumbs": "Atari_-_7800",
+      "romDb": "no-intro/Atari - 7800.dat",
+      "color": "#b5651d"
+    },
+    "lynx": {
+      "name": "Atari Lynx",
+      "short": "LYNX",
+      "thumbs": "Atari_-_Lynx",
+      "romDb": "no-intro/Atari - Lynx.dat",
+      "color": "#d4a017"
+    },
+    "jaguar": {
+      "name": "Atari Jaguar",
+      "short": "JAG",
+      "thumbs": "Atari_-_Jaguar",
+      "romDb": "no-intro/Atari - Jaguar.dat",
+      "color": "#c0392b"
+    },
+    "3do": {
+      "name": "3DO",
+      "short": "3DO",
+      "thumbs": "The_3DO_Company_-_3DO",
+      "color": "#b8860b"
+    },
+    "coleco": {
+      "name": "ColecoVision",
+      "short": "CV",
+      "thumbs": "Coleco_-_ColecoVision",
+      "romDb": "no-intro/Coleco - ColecoVision.dat",
+      "color": "#2c3e50"
+    },
+    "intv": {
+      "name": "Intellivision",
+      "short": "INTV",
+      "thumbs": "Mattel_-_Intellivision",
+      "romDb": "no-intro/Mattel - Intellivision.dat",
+      "color": "#8e6c3a"
+    },
+    "vectrex": {
+      "name": "Vectrex",
+      "short": "VEC",
+      "thumbs": "GCE_-_Vectrex",
+      "romDb": "no-intro/GCE - Vectrex.dat",
+      "color": "#4a4a4a"
+    },
+    "msx": {
+      "name": "MSX",
+      "short": "MSX",
+      "thumbs": "Microsoft_-_MSX",
+      "romDb": "no-intro/Microsoft - MSX.dat",
+      "color": "#5d6d7e"
+    },
+    "cps1": {
+      "name": "Capcom CPS-1",
+      "short": "CPS1",
+      "thumbs": "FBNeo_-_Arcade_Games",
+      "color": "#1e5bd6",
+      "arcade": true
+    },
+    "cps2": {
+      "name": "Capcom CPS-2",
+      "short": "CPS2",
+      "thumbs": "FBNeo_-_Arcade_Games",
+      "color": "#2f7bff",
+      "arcade": true
+    },
+    "cps3": {
+      "name": "Capcom CPS-3",
+      "short": "CPS3",
+      "thumbs": "FBNeo_-_Arcade_Games",
+      "color": "#5aa2ff",
+      "arcade": true
+    },
+    "zn": {
+      "name": "Capcom / Sony ZN",
+      "short": "ZN",
+      "thumbs": "MAME",
+      "color": "#3b6fb5",
+      "arcade": true
+    },
+    "neogeo": {
+      "name": "Neo Geo (MVS / AES)",
+      "short": "NEO",
+      "thumbs": "FBNeo_-_Arcade_Games",
+      "color": "#c9a227",
+      "arcade": true
+    },
+    "naomi": {
+      "name": "Sega NAOMI",
+      "short": "NAOMI",
+      "thumbs": "MAME",
+      "color": "#f28c28",
+      "arcade": true
+    },
+    "atomiswave": {
+      "name": "Sammy Atomiswave",
+      "short": "AW",
+      "thumbs": "MAME",
+      "color": "#d9531e",
+      "arcade": true
+    },
+    "sys16": {
+      "name": "Sega System 16",
+      "short": "S16",
+      "thumbs": "FBNeo_-_Arcade_Games",
+      "color": "#3561c9",
+      "arcade": true
+    },
+    "sys18": {
+      "name": "Sega System 18",
+      "short": "S18",
+      "thumbs": "FBNeo_-_Arcade_Games",
+      "color": "#2c4fa3",
+      "arcade": true
+    },
+    "sys24": {
+      "name": "Sega System 24",
+      "short": "S24",
+      "thumbs": "MAME",
+      "color": "#27448c",
+      "arcade": true
+    },
+    "sys32": {
+      "name": "Sega System 32",
+      "short": "S32",
+      "thumbs": "FBNeo_-_Arcade_Games",
+      "color": "#1f3a7a",
+      "arcade": true
+    },
+    "model1": {
+      "name": "Sega Model 1",
+      "short": "MDL1",
+      "thumbs": "MAME",
+      "color": "#5c6e8c",
+      "arcade": true
+    },
+    "model2": {
+      "name": "Sega Model 2",
+      "short": "MDL2",
+      "thumbs": "MAME",
+      "color": "#4a5f84",
+      "arcade": true
+    },
+    "model3": {
+      "name": "Sega Model 3",
+      "short": "MDL3",
+      "thumbs": "MAME",
+      "color": "#3a4f78",
+      "arcade": true
+    },
+    "stv": {
+      "name": "Sega ST-V (Titan)",
+      "short": "ST-V",
+      "thumbs": "MAME",
+      "color": "#6b7280",
+      "arcade": true
+    },
+    "namcos1": {
+      "name": "Namco System 1",
+      "short": "NS1",
+      "thumbs": "FBNeo_-_Arcade_Games",
+      "color": "#c0392b",
+      "arcade": true
+    },
+    "namcos2": {
+      "name": "Namco System 2",
+      "short": "NS2",
+      "thumbs": "FBNeo_-_Arcade_Games",
+      "color": "#a93226",
+      "arcade": true
+    },
+    "namcos11": {
+      "name": "Namco System 11",
+      "short": "NS11",
+      "thumbs": "MAME",
+      "color": "#922b21",
+      "arcade": true
+    },
+    "namcos12": {
+      "name": "Namco System 12",
+      "short": "NS12",
+      "thumbs": "MAME",
+      "color": "#7b241c",
+      "arcade": true
+    },
+    "namcos22": {
+      "name": "Namco System 22",
+      "short": "NS22",
+      "thumbs": "MAME",
+      "color": "#641e16",
+      "arcade": true
+    },
+    "konamigx": {
+      "name": "Konami GX",
+      "short": "KGX",
+      "thumbs": "MAME",
+      "color": "#d4ac0d",
+      "arcade": true
+    },
+    "sys573": {
+      "name": "Konami System 573",
+      "short": "573",
+      "thumbs": "MAME",
+      "color": "#b7950b",
+      "arcade": true
+    },
+    "taitof3": {
+      "name": "Taito F3",
+      "short": "F3",
+      "thumbs": "FBNeo_-_Arcade_Games",
+      "color": "#16a085",
+      "arcade": true
+    },
+    "pgm": {
+      "name": "IGS PolyGame Master",
+      "short": "PGM",
+      "thumbs": "FBNeo_-_Arcade_Games",
+      "color": "#8e44ad",
+      "arcade": true
+    },
+    "cave": {
+      "name": "Cave",
+      "short": "CAVE",
+      "thumbs": "FBNeo_-_Arcade_Games",
+      "color": "#a04000",
+      "arcade": true
+    },
+    "psikyo": {
+      "name": "Psikyo",
+      "short": "PSK",
+      "thumbs": "FBNeo_-_Arcade_Games",
+      "color": "#ca6f1e",
+      "arcade": true
+    },
+    "toaplan": {
+      "name": "Toaplan",
+      "short": "TOA",
+      "thumbs": "FBNeo_-_Arcade_Games",
+      "color": "#b9770e",
+      "arcade": true
+    },
+    "irem": {
+      "name": "Irem M72 / M92",
+      "short": "IREM",
+      "thumbs": "FBNeo_-_Arcade_Games",
+      "color": "#7d3c98",
+      "arcade": true
+    },
+    "midway": {
+      "name": "Midway",
+      "short": "MID",
+      "thumbs": "FBNeo_-_Arcade_Games",
+      "color": "#7f8c8d",
+      "arcade": true
+    },
+    "arcade": {
+      "name": "Arcade (other boards)",
+      "short": "ARC",
+      "color": "#e0a91b",
+      "thumbs": "FBNeo_-_Arcade_Games",
+      "arcade": true
+    },
+    "pc": {
+      "name": "PC",
+      "short": "PC",
+      "color": "#8a94a6"
+    },
+    "mobile": {
+      "name": "Mobile",
+      "short": "MOB",
+      "color": "#c97b2a"
+    }
+  },
+  "games": [
+    {
+      "id": "soh",
+      "title": "The Legend of Zelda: Ocarina of Time",
+      "port": "Ship of Harkinian",
+      "system": "n64",
+      "year": 1998,
+      "developer": "Nintendo EAD",
+      "publisher": "Nintendo",
+      "kind": "Native PC port",
+      "credits": [
+        {
+          "role": "Decompiled by",
+          "name": "ZeldaRET"
+        },
+        {
+          "role": "PC port by",
+          "name": "Harbour Masters"
+        }
+      ],
+      "repo": "HarbourMasters/Shipwright",
+      "site": "https://www.shipofharkinian.com",
+      "description": "A full PC port built on the Ocarina of Time decompilation, with widescreen, high frame rates, an extensive enhancements menu and a randomizer.",
+      "exe": "soh\\.exe$",
+      "rom": {
+        "titles": [
+          "Legend of Zelda, The - Ocarina of Time",
+          "Legend of Zelda, The - Ocarina of Time - Master Quest"
+        ],
+        "headerNames": [
+          "THE LEGEND OF ZELDA",
+          "ZELDA MASTER QUEST"
+        ],
+        "note": "Accepts several N64 and GameCube versions. If yours isn't supported, the game says so during setup.",
+        "setup": {
+          "type": "beside-exe"
+        },
+        "firstRun": "On first launch the game finds your ROM and extracts its assets. Answer Yes to the extraction prompt, and No to the Master Quest prompt unless you have that disc."
+      },
+      "art": {
+        "boxart": [
+          "Legend of Zelda, The - Ocarina of Time (USA)",
+          "Legend of Zelda, The - Ocarina of Time (USA) (Rev 2)"
+        ]
+      },
+      "about": "Released in November 1998, Ocarina of Time took Link into 3D and introduced Z-targeting and context-sensitive controls. It is regularly named one of the greatest games ever made.",
+      "metacritic": {
+        "score": 99,
+        "reviews": 22,
+        "platform": "Nintendo 64",
+        "url": "https://www.metacritic.com/game/the-legend-of-zelda-ocarina-of-time/",
+        "user": {
+          "score": 9.1,
+          "ratings": 14588
+        }
+      }
+    },
+    {
+      "id": "2ship",
+      "title": "The Legend of Zelda: Majora's Mask",
+      "port": "2 Ship 2 Harkinian",
+      "system": "n64",
+      "year": 2000,
+      "developer": "Nintendo EAD",
+      "publisher": "Nintendo",
+      "kind": "Native PC port",
+      "credits": [
+        {
+          "role": "Decompiled by",
+          "name": "ZeldaRET"
+        },
+        {
+          "role": "PC port by",
+          "name": "Harbour Masters"
+        }
+      ],
+      "repo": "HarbourMasters/2ship2harkinian",
+      "description": "Majora's Mask rebuilt for PC from the decompilation: high frame rates, widescreen, modern controls and a deep settings menu.",
+      "exe": "2ship\\.exe$",
+      "rom": {
+        "titles": [
+          "Legend of Zelda, The - Majora's Mask"
+        ],
+        "regions": [
+          "USA"
+        ],
+        "headerNames": [
+          "ZELDA MAJORA'S MASK"
+        ],
+        "note": "Needs the North American N64 version.",
+        "setup": {
+          "type": "beside-exe"
+        },
+        "firstRun": "On first launch the game finds your ROM and extracts its assets (one time only)."
+      },
+      "art": {
+        "boxart": [
+          "Legend of Zelda, The - Majora's Mask (USA)"
+        ]
+      },
+      "about": "The 2000 follow-up to Ocarina of Time, built on the same engine in under two years. Link has three days to stop the moon falling on Termina, and keeps rewinding them with the Song of Time. On the N64 it needed the Expansion Pak.",
+      "metacritic": {
+        "score": 95,
+        "reviews": 27,
+        "platform": "Nintendo 64",
+        "url": "https://www.metacritic.com/game/the-legend-of-zelda-majoras-mask/",
+        "user": {
+          "score": 9.2,
+          "ratings": 2661
+        }
+      }
+    },
+    {
+      "id": "zelda64recomp",
+      "title": "The Legend of Zelda: Majora's Mask",
+      "port": "Zelda 64: Recompiled",
+      "system": "n64",
+      "year": 2000,
+      "developer": "Nintendo EAD",
+      "publisher": "Nintendo",
+      "kind": "Static recompilation",
+      "credits": [
+        {
+          "role": "Recompiled by",
+          "name": "Wiseguy & the Zelda64Recomp team"
+        },
+        {
+          "role": "Built on",
+          "name": "ZeldaRET's Majora's Mask decomp"
+        }
+      ],
+      "repo": "Zelda64Recomp/Zelda64Recomp",
+      "description": "Majora's Mask statically recompiled to native code, with ray-traced-style RT64 rendering, ultrawide support, high frame rates and a mod menu.",
+      "filesToAdd": [
+        "portable.txt"
+      ],
+      "rom": {
+        "titles": [
+          "Legend of Zelda, The - Majora's Mask"
+        ],
+        "regions": [
+          "USA"
+        ],
+        "headerNames": [
+          "ZELDA MAJORA'S MASK"
+        ],
+        "note": "Only the North American N64 version works.",
+        "setup": {
+          "type": "in-app"
+        },
+        "firstRun": "Choose \"Select ROM\" in the game's main menu. Your ROM's path is on the clipboard: paste it into the file box with Ctrl+V.",
+        "formats": [
+          ".z64",
+          ".n64",
+          ".v64"
+        ],
+        "formatNote": "The game converts .n64/.v64 to .z64 itself, as long as it's the right ROM."
+      },
+      "art": {
+        "boxart": [
+          "Legend of Zelda, The - Majora's Mask (USA)"
+        ],
+        "icon": "https://raw.githubusercontent.com/Zelda64Recomp/Zelda64Recomp/refs/heads/dev/icons/512.png"
+      },
+      "about": "The 2000 follow-up to Ocarina of Time, built on the same engine in under two years. Link has three days to stop the moon falling on Termina, and keeps rewinding them with the Song of Time. On the N64 it needed the Expansion Pak.",
+      "metacritic": {
+        "score": 95,
+        "reviews": 27,
+        "platform": "Nintendo 64",
+        "url": "https://www.metacritic.com/game/the-legend-of-zelda-majoras-mask/",
+        "user": {
+          "score": 9.2,
+          "ratings": 2661
+        }
+      }
+    },
+    {
+      "id": "ghostship",
+      "title": "Super Mario 64",
+      "port": "Ghostship",
+      "system": "n64",
+      "year": 1996,
+      "developer": "Nintendo EAD",
+      "publisher": "Nintendo",
+      "kind": "Native PC port",
+      "credits": [
+        {
+          "role": "Decompiled by",
+          "name": "n64decomp (sm64)"
+        },
+        {
+          "role": "PC port by",
+          "name": "Harbour Masters"
+        }
+      ],
+      "repo": "HarbourMasters/Ghostship",
+      "description": "Harbour Masters' take on Super Mario 64: the decompiled game on their libultraship engine, with enhancements and mod support.",
+      "rom": {
+        "titles": [
+          "Super Mario 64"
+        ],
+        "regions": [
+          "USA"
+        ],
+        "headerNames": [
+          "SUPER MARIO 64"
+        ],
+        "note": "The North American version is the safe choice.",
+        "setup": {
+          "type": "beside-exe"
+        },
+        "firstRun": "On first launch the game finds your ROM and builds its asset file (one time only)."
+      },
+      "art": {
+        "boxart": [
+          "Super Mario 64 (USA)"
+        ]
+      },
+      "about": "A launch title for the Nintendo 64 in 1996. Its analog-stick movement and free camera set the template that 3D platformers still follow.",
+      "metacritic": {
+        "score": 94,
+        "reviews": 13,
+        "platform": "Nintendo 64",
+        "url": "https://www.metacritic.com/game/super-mario-64/",
+        "user": {
+          "score": 9,
+          "ratings": 2126
+        }
+      }
+    },
+    {
+      "id": "sm64coopdx",
+      "title": "Super Mario 64",
+      "port": "sm64coopdx",
+      "system": "n64",
+      "year": 1996,
+      "developer": "Nintendo EAD",
+      "publisher": "Nintendo",
+      "kind": "Native PC port (online co-op)",
+      "credits": [
+        {
+          "role": "Decompiled by",
+          "name": "n64decomp (sm64)"
+        },
+        {
+          "role": "PC port by",
+          "name": "coop-deluxe team"
+        }
+      ],
+      "repo": "coop-deluxe/sm64coopdx",
+      "description": "Online multiplayer Super Mario 64 for up to 16 players, with Lua mods, custom characters and DynOS model packs.",
+      "rom": {
+        "titles": [
+          "Super Mario 64"
+        ],
+        "regions": [
+          "USA"
+        ],
+        "headerNames": [
+          "SUPER MARIO 64"
+        ],
+        "note": "Needs the North American version.",
+        "setup": {
+          "type": "in-app",
+          "reveal": true
+        },
+        "firstRun": "When the game asks for your ROM, drag it from the Explorer window we opened onto the game window."
+      },
+      "art": {
+        "boxart": [
+          "Super Mario 64 (USA)"
+        ]
+      },
+      "about": "A launch title for the Nintendo 64 in 1996. Its analog-stick movement and free camera set the template that 3D platformers still follow.",
+      "metacritic": {
+        "score": 94,
+        "reviews": 13,
+        "platform": "Nintendo 64",
+        "url": "https://www.metacritic.com/game/super-mario-64/",
+        "user": {
+          "score": 9,
+          "ratings": 2126
+        }
+      },
+      "saves": [
+        {
+          "key": "appdata",
+          "path": "%APPDATA%/sm64coopdx"
+        }
+      ]
+    },
+    {
+      "id": "starship",
+      "title": "Star Fox 64",
+      "port": "Starship",
+      "system": "n64",
+      "year": 1997,
+      "developer": "Nintendo EAD",
+      "publisher": "Nintendo",
+      "kind": "Native PC port",
+      "credits": [
+        {
+          "role": "Decompiled by",
+          "name": "sonicdcer & the sf64 decomp team"
+        },
+        {
+          "role": "PC port by",
+          "name": "Harbour Masters"
+        }
+      ],
+      "repo": "HarbourMasters/Starship",
+      "description": "Star Fox 64 on PC with high frame rates, widescreen and enhancement options, built from the full decompilation.",
+      "rom": {
+        "titles": [
+          "Star Fox 64",
+          "Lylat Wars"
+        ],
+        "excludeTags": [
+          "Rev 1"
+        ],
+        "headerNames": [
+          "STARFOX64",
+          "LYLAT WARS"
+        ],
+        "note": "US 1.0 recommended. The Japanese 1.0 (Japanese voices) and European 1.0 (Lylat voices) work too.",
+        "setup": {
+          "type": "beside-exe"
+        },
+        "firstRun": "On first launch the game finds your ROM and extracts its assets (one time only)."
+      },
+      "art": {
+        "boxart": [
+          "Star Fox 64 (USA)",
+          "Star Fox 64 (USA) (Rev 1)"
+        ]
+      },
+      "about": "Released in 1997 (as Lylat Wars in Europe), Star Fox 64 came bundled with the Rumble Pak and sends Fox's team along branching routes through the Lylat system.",
+      "metacritic": {
+        "score": 88,
+        "reviews": 16,
+        "platform": "Nintendo 64",
+        "url": "https://www.metacritic.com/game/star-fox-64/",
+        "user": {
+          "score": 8.7,
+          "ratings": 434
+        }
+      }
+    },
+    {
+      "id": "sf64recomp",
+      "title": "Star Fox 64",
+      "port": "Starfox 64: Recompiled",
+      "system": "n64",
+      "year": 1997,
+      "developer": "Nintendo EAD",
+      "publisher": "Nintendo",
+      "kind": "Static recompilation",
+      "credits": [
+        {
+          "role": "Recompiled by",
+          "name": "sonicdcer"
+        }
+      ],
+      "repo": "sonicdcer/Starfox64Recomp",
+      "description": "Star Fox 64 statically recompiled with the N64Recomp toolchain and rendered through RT64.",
+      "filesToAdd": [
+        "portable.txt"
+      ],
+      "rom": {
+        "titles": [
+          "Star Fox 64"
+        ],
+        "regions": [
+          "USA"
+        ],
+        "headerNames": [
+          "STARFOX64"
+        ],
+        "setup": {
+          "type": "in-app"
+        },
+        "firstRun": "Choose \"Select ROM\" in the game's menu, then paste your ROM path with Ctrl+V."
+      },
+      "art": {
+        "boxart": [
+          "Star Fox 64 (USA)",
+          "Star Fox 64 (USA) (Rev 1)"
+        ],
+        "icon": "https://raw.githubusercontent.com/sonicdcer/Starfox64Recomp/refs/heads/main/icons/512.png"
+      },
+      "about": "Released in 1997 (as Lylat Wars in Europe), Star Fox 64 came bundled with the Rumble Pak and sends Fox's team along branching routes through the Lylat system.",
+      "metacritic": {
+        "score": 88,
+        "reviews": 16,
+        "platform": "Nintendo 64",
+        "url": "https://www.metacritic.com/game/star-fox-64/",
+        "user": {
+          "score": 8.7,
+          "ratings": 434
+        }
+      }
+    },
+    {
+      "id": "spaghettikart",
+      "title": "Mario Kart 64",
+      "port": "SpaghettiKart",
+      "system": "n64",
+      "year": 1996,
+      "developer": "Nintendo EAD",
+      "publisher": "Nintendo",
+      "kind": "Native PC port",
+      "credits": [
+        {
+          "role": "Decompiled by",
+          "name": "n64decomp (mk64)"
+        },
+        {
+          "role": "PC port by",
+          "name": "Harbour Masters"
+        }
+      ],
+      "repo": "HarbourMasters/SpaghettiKart",
+      "description": "Mario Kart 64 rebuilt for PC with widescreen, high frame rates, custom tracks and mods.",
+      "exe": "spaghettify\\.exe$",
+      "rom": {
+        "titles": [
+          "Mario Kart 64"
+        ],
+        "regions": [
+          "USA"
+        ],
+        "sha1": [
+          "579C48E211AE952530FFC8738709F078D5DD215E"
+        ],
+        "headerNames": [
+          "MARIOKART64"
+        ],
+        "note": "Only the North American version works.",
+        "setup": {
+          "type": "beside-exe"
+        },
+        "firstRun": "If the game asks for a ROM, pick the copy we placed in its folder, or paste the path from the clipboard.",
+        "formats": [
+          ".z64"
+        ],
+        "formatNote": "SpaghettiKart only accepts .z64. Load it in Cartridge and .n64/.v64 dumps are converted for you."
+      },
+      "art": {
+        "boxart": [
+          "Mario Kart 64 (USA)"
+        ]
+      },
+      "about": "Released in December 1996, the second Mario Kart moved the series onto 3D tracks and added four-player split-screen racing.",
+      "metacritic": {
+        "score": 83,
+        "reviews": 15,
+        "platform": "Nintendo 64",
+        "url": "https://www.metacritic.com/game/mario-kart-64/",
+        "user": {
+          "score": 8.4,
+          "ratings": 757
+        }
+      }
+    },
+    {
+      "id": "mk64recomp",
+      "title": "Mario Kart 64",
+      "port": "Mario Kart 64: Recompiled",
+      "system": "n64",
+      "year": 1996,
+      "developer": "Nintendo EAD",
+      "publisher": "Nintendo",
+      "kind": "Static recompilation",
+      "credits": [
+        {
+          "role": "Recompiled by",
+          "name": "sonicdcer"
+        }
+      ],
+      "repo": "sonicdcer/MarioKart64Recomp",
+      "description": "Mario Kart 64 statically recompiled with N64Recomp and RT64 for high frame rates and widescreen.",
+      "filesToAdd": [
+        "portable.txt"
+      ],
+      "rom": {
+        "titles": [
+          "Mario Kart 64"
+        ],
+        "regions": [
+          "USA"
+        ],
+        "headerNames": [
+          "MARIOKART64"
+        ],
+        "setup": {
+          "type": "in-app"
+        },
+        "firstRun": "Choose \"Select ROM\" in the game's menu, then paste your ROM path with Ctrl+V."
+      },
+      "art": {
+        "boxart": [
+          "Mario Kart 64 (USA)"
+        ],
+        "icon": "https://raw.githubusercontent.com/sonicdcer/MarioKart64Recomp/refs/heads/main/icons/512.png"
+      },
+      "about": "Released in December 1996, the second Mario Kart moved the series onto 3D tracks and added four-player split-screen racing.",
+      "metacritic": {
+        "score": 83,
+        "reviews": 15,
+        "platform": "Nintendo 64",
+        "url": "https://www.metacritic.com/game/mario-kart-64/",
+        "user": {
+          "score": 8.4,
+          "ratings": 757
+        }
+      }
+    },
+    {
+      "id": "perfectdark",
+      "title": "Perfect Dark",
+      "port": "Perfect Dark PC port",
+      "system": "n64",
+      "year": 2000,
+      "developer": "Rare",
+      "publisher": "Rare / Nintendo",
+      "kind": "Native PC port",
+      "credits": [
+        {
+          "role": "Decompiled by",
+          "name": "n64decomp (perfect_dark)"
+        },
+        {
+          "role": "PC port by",
+          "name": "fgsfds"
+        }
+      ],
+      "repo": "perfect-dark-pc-port/perfect_dark",
+      "description": "Rare's shooter running natively with mouse aim, high frame rates, widescreen and up to four local players.",
+      "exe": "pd\\.(x86_64|i686)?\\.?exe$|pd\\.exe$",
+      "assetMatch": "x86_64.*win|win.*x86_64|win64",
+      "rom": {
+        "titles": [
+          "Perfect Dark"
+        ],
+        "regions": [
+          "USA"
+        ],
+        "requireTags": [
+          "Rev 1"
+        ],
+        "headerNames": [
+          "Perfect Dark"
+        ],
+        "note": "Use the North American \"final\" release (Rev 1). The original US 1.0 needs a different build.",
+        "setup": {
+          "type": "file",
+          "path": "data/pd.ntsc-final.z64"
+        },
+        "firstRun": "Your ROM is already in the game's data folder. Just play.",
+        "formats": [
+          ".z64"
+        ],
+        "formatNote": "Must be a .z64 named pd.ntsc-final.z64 in the game's data folder. Cartridge converts and places it for you."
+      },
+      "art": {
+        "boxart": [
+          "Perfect Dark (USA) (Rev 1)",
+          "Perfect Dark (USA)"
+        ]
+      },
+      "about": "Rare's 2000 follow-up to GoldenEye 007, starring agent Joanna Dark. Most of the game needed the Expansion Pak, and it pushed the N64 so hard that it often ran at low frame rates, which the PC port fixes.",
+      "metacritic": {
+        "score": 97,
+        "reviews": 30,
+        "platform": "Nintendo 64",
+        "url": "https://www.metacritic.com/game/perfect-dark-2000/",
+        "user": {
+          "score": 8.3,
+          "ratings": 730
+        }
+      }
+    },
+    {
+      "id": "banjorecomp",
+      "title": "Banjo-Kazooie",
+      "port": "Banjo: Recompiled",
+      "system": "n64",
+      "year": 1998,
+      "developer": "Rare",
+      "publisher": "Nintendo",
+      "kind": "Static recompilation",
+      "credits": [
+        {
+          "role": "Recompiled by",
+          "name": "BanjoRecomp team"
+        }
+      ],
+      "repo": "BanjoRecomp/BanjoRecomp",
+      "description": "Banjo-Kazooie statically recompiled for PC with RT64 rendering, widescreen and high frame rates.",
+      "filesToAdd": [
+        "portable.txt"
+      ],
+      "rom": {
+        "titles": [
+          "Banjo-Kazooie"
+        ],
+        "regions": [
+          "USA"
+        ],
+        "headerNames": [
+          "Banjo-Kazooie"
+        ],
+        "setup": {
+          "type": "in-app"
+        },
+        "firstRun": "Choose \"Select ROM\" in the game's menu, then paste your ROM path with Ctrl+V."
+      },
+      "art": {
+        "boxart": [
+          "Banjo-Kazooie (USA)",
+          "Banjo-Kazooie (USA) (Rev 1)"
+        ],
+        "icon": "https://raw.githubusercontent.com/BanjoRecomp/BanjoRecomp/refs/heads/main/icons/app.png"
+      },
+      "about": "Rare's 1998 3D platformer starring a bear and the bird who lives in his backpack. It started life as a Super Nintendo project before moving to the N64.",
+      "metacritic": {
+        "score": 92,
+        "reviews": 19,
+        "platform": "Nintendo 64",
+        "url": "https://www.metacritic.com/game/banjo-kazooie/",
+        "user": {
+          "score": 9,
+          "ratings": 864
+        }
+      }
+    },
+    {
+      "id": "goemon64recomp",
+      "title": "Mystical Ninja Starring Goemon",
+      "port": "Goemon 64: Recompiled",
+      "system": "n64",
+      "year": 1997,
+      "developer": "Konami",
+      "publisher": "Konami",
+      "kind": "Static recompilation",
+      "credits": [
+        {
+          "role": "Recompiled by",
+          "name": "klorfmorf"
+        }
+      ],
+      "repo": "klorfmorf/Goemon64Recomp",
+      "description": "Konami's adventure statically recompiled for modern PCs with RT64.",
+      "filesToAdd": [
+        "portable.txt"
+      ],
+      "rom": {
+        "titles": [
+          "Mystical Ninja Starring Goemon"
+        ],
+        "regions": [
+          "USA"
+        ],
+        "setup": {
+          "type": "in-app"
+        },
+        "firstRun": "Choose \"Select ROM\" in the game's menu, then paste your ROM path with Ctrl+V."
+      },
+      "art": {
+        "boxart": [
+          "Mystical Ninja Starring Goemon (USA)"
+        ],
+        "icon": "https://raw.githubusercontent.com/klorfmorf/Goemon64Recomp/refs/heads/dev/icons/512.png"
+      },
+      "about": "Konami's 1997 adventure, called Ganbare Goemon in Japan, was the series' first 3D entry. It mixes exploration of a stylised Edo-period Japan with giant-robot battles.",
+      "metacritic": {
+        "score": 67,
+        "reviews": 10,
+        "platform": "Nintendo 64",
+        "url": "https://www.metacritic.com/game/mystical-ninja-starring-goemon/",
+        "user": {
+          "score": 8.3,
+          "ratings": 54
+        }
+      }
+    },
+    {
+      "id": "dinorecomp",
+      "title": "Dinosaur Planet",
+      "port": "Dinosaur Planet: Recompiled",
+      "system": "n64",
+      "year": 2000,
+      "developer": "Rare",
+      "publisher": "Unreleased",
+      "kind": "Static recompilation",
+      "credits": [
+        {
+          "role": "Recompiled by",
+          "name": "Dinosaur Planet Recomp team"
+        }
+      ],
+      "repo": "DinosaurPlanetRecomp/dino-recomp",
+      "description": "Rare's cancelled N64 adventure, the game that became Star Fox Adventures, recompiled from the leaked late prototype.",
+      "filesToAdd": [
+        "portable.txt"
+      ],
+      "rom": {
+        "titles": [
+          "Dinosaur Planet"
+        ],
+        "headerNames": [
+          "Dinosaur Planet",
+          "DINOSAUR PLANET"
+        ],
+        "note": "Uses the publicly leaked prototype image. It isn't in the No-Intro list, so the launcher identifies it by its header.",
+        "setup": {
+          "type": "in-app"
+        },
+        "firstRun": "Choose \"Select ROM\" in the game's menu, then paste your ROM path with Ctrl+V."
+      },
+      "art": {
+        "boxart": [],
+        "icon": "https://raw.githubusercontent.com/DinosaurPlanetRecomp/dino-recomp/refs/heads/main/icons/512.png"
+      },
+      "about": "Rare's N64 adventure starring Sabre and Krystal. It was cancelled when development moved to the GameCube, where it became Star Fox Adventures (2002). A late build leaked online in 2021."
+    },
+    {
+      "id": "dnzhrecomp",
+      "title": "Duke Nukem: Zero Hour",
+      "port": "Zero Hour: Recompiled",
+      "system": "n64",
+      "year": 1999,
+      "developer": "Eurocom",
+      "publisher": "GT Interactive",
+      "kind": "Static recompilation",
+      "credits": [
+        {
+          "role": "Recompiled by",
+          "name": "sonicdcer"
+        }
+      ],
+      "repo": "sonicdcer/DNZHRecomp",
+      "description": "The N64-exclusive third-person Duke game, recompiled for PC.",
+      "filesToAdd": [
+        "portable.txt"
+      ],
+      "rom": {
+        "titles": [
+          "Duke Nukem - Zero Hour"
+        ],
+        "regions": [
+          "USA"
+        ],
+        "setup": {
+          "type": "in-app"
+        },
+        "firstRun": "Choose \"Select ROM\" in the game's menu, then paste your ROM path with Ctrl+V."
+      },
+      "art": {
+        "boxart": [
+          "Duke Nukem - Zero Hour (USA)"
+        ],
+        "icon": "https://raw.githubusercontent.com/sonicdcer/DNZHRecomp/refs/heads/main/icons/512.png"
+      },
+      "about": "An N64-exclusive third-person shooter released in 1999, in which Duke travels through time to stop an alien invasion.",
+      "metacritic": {
+        "score": null,
+        "reviews": 0,
+        "platform": "Nintendo 64",
+        "url": "https://www.metacritic.com/game/duke-nukem-zero-hour/",
+        "user": {
+          "score": 9.8,
+          "ratings": 4
+        }
+      }
+    },
+    {
+      "id": "mm64recomp",
+      "title": "Mega Man 64",
+      "port": "Mega Man 64: Recompiled",
+      "system": "n64",
+      "year": 2001,
+      "developer": "Capcom",
+      "publisher": "Capcom",
+      "kind": "Static recompilation",
+      "credits": [
+        {
+          "role": "Recompiled by",
+          "name": "MegaMan64Recomp team"
+        }
+      ],
+      "repo": "MegaMan64Recomp/MegaMan64Recompiled",
+      "description": "The N64 version of Mega Man Legends, recompiled for PC.",
+      "filesToAdd": [
+        "portable.txt"
+      ],
+      "rom": {
+        "titles": [
+          "Mega Man 64"
+        ],
+        "regions": [
+          "USA"
+        ],
+        "setup": {
+          "type": "in-app"
+        },
+        "firstRun": "Choose \"Select ROM\" in the game's menu, then paste your ROM path with Ctrl+V."
+      },
+      "art": {
+        "boxart": [
+          "Mega Man 64 (USA)"
+        ],
+        "icon": "https://raw.githubusercontent.com/MegaMan64Recomp/MegaMan64Recompiled/refs/heads/main/icons/512.png"
+      },
+      "about": "A 2001 N64 port of Mega Man Legends (1997, PlayStation), Capcom's first fully 3D Mega Man game.",
+      "metacritic": {
+        "score": 59,
+        "reviews": 6,
+        "platform": "Nintendo 64",
+        "url": "https://www.metacritic.com/game/mega-man-64/",
+        "user": {
+          "score": 7.2,
+          "ratings": 39
+        }
+      }
+    },
+    {
+      "id": "hm64recomp",
+      "title": "Harvest Moon 64",
+      "port": "Harvest Moon 64: Recompiled",
+      "system": "n64",
+      "year": 1999,
+      "developer": "Victor Interactive Software",
+      "publisher": "Natsume",
+      "kind": "Static recompilation",
+      "credits": [
+        {
+          "role": "Recompiled by",
+          "name": "HarvestMoon64Recomp team"
+        }
+      ],
+      "repo": "HarvestMoon64Recomp/HarvestMoon64Recomp",
+      "description": "The classic farming sim, recompiled for PC.",
+      "filesToAdd": [
+        "portable.txt"
+      ],
+      "rom": {
+        "titles": [
+          "Harvest Moon 64"
+        ],
+        "regions": [
+          "USA"
+        ],
+        "setup": {
+          "type": "in-app"
+        },
+        "firstRun": "Choose \"Select ROM\" in the game's menu, then paste your ROM path with Ctrl+V."
+      },
+      "art": {
+        "boxart": [
+          "Harvest Moon 64 (USA)"
+        ],
+        "icon": "https://raw.githubusercontent.com/HarvestMoon64Recomp/HarvestMoon64Recomp/refs/heads/main/icons/512.png"
+      },
+      "about": "Released in Japan in 1999, Harvest Moon 64 gives you a few in-game years to restore your grandfather's farm. It's often called a favourite of the series.",
+      "metacritic": {
+        "score": 78,
+        "reviews": 7,
+        "platform": "Nintendo 64",
+        "url": "https://www.metacritic.com/game/harvest-moon-64/",
+        "user": {
+          "score": 8,
+          "ratings": 56
+        }
+      }
+    },
+    {
+      "id": "quest64recomp",
+      "title": "Quest 64",
+      "port": "Quest 64: Recompiled",
+      "system": "n64",
+      "year": 1998,
+      "developer": "Imagineer",
+      "publisher": "THQ",
+      "kind": "Static recompilation",
+      "credits": [
+        {
+          "role": "Recompiled by",
+          "name": "Rainchus"
+        }
+      ],
+      "repo": "Rainchus/Quest64-Recomp",
+      "description": "Imagineer's spell-slinging RPG, recompiled for PC.",
+      "filesToAdd": [
+        "portable.txt"
+      ],
+      "rom": {
+        "titles": [
+          "Quest 64"
+        ],
+        "regions": [
+          "USA"
+        ],
+        "setup": {
+          "type": "in-app"
+        },
+        "firstRun": "Choose \"Select ROM\" in the game's menu, then paste your ROM path with Ctrl+V."
+      },
+      "art": {
+        "boxart": [
+          "Quest 64 (USA)"
+        ],
+        "icon": "https://raw.githubusercontent.com/Rainchus/Quest64-Recomp/refs/heads/main/icons/512.png"
+      },
+      "about": "Imagineer's 1998 RPG, called Holy Magic Century in Europe, was one of the first RPGs on the N64. Its spells are built from four elements.",
+      "metacritic": {
+        "score": null,
+        "reviews": 0,
+        "platform": "Nintendo 64",
+        "url": "https://www.metacritic.com/game/quest-64/",
+        "user": {
+          "score": 6.1,
+          "ratings": 8
+        }
+      }
+    },
+    {
+      "id": "ctrecomp",
+      "title": "Chameleon Twist",
+      "port": "Chameleon Twist: Recompiled",
+      "system": "n64",
+      "year": 1997,
+      "developer": "Japan System Supply",
+      "publisher": "Sunsoft",
+      "kind": "Static recompilation",
+      "credits": [
+        {
+          "role": "Recompiled by",
+          "name": "Rainchus"
+        }
+      ],
+      "repo": "Rainchus/ChameleonTwist1-JP-Recomp",
+      "description": "The tongue-swinging platformer, recompiled from the Japanese release.",
+      "filesToAdd": [
+        "portable.txt"
+      ],
+      "rom": {
+        "titles": [
+          "Chameleon Twist"
+        ],
+        "regions": [
+          "Japan"
+        ],
+        "note": "This project is built from the Japanese version.",
+        "setup": {
+          "type": "in-app"
+        },
+        "firstRun": "Choose \"Select ROM\" in the game's menu, then paste your ROM path with Ctrl+V."
+      },
+      "art": {
+        "boxart": [
+          "Chameleon Twist (USA)",
+          "Chameleon Twist (Japan)"
+        ],
+        "icon": "https://cdn2.steamgriddb.com/icon/c1f22f4c38899f51f1ed3ce20120bbd9.png"
+      },
+      "about": "A 1997 platformer where a chameleon uses its long tongue to swing, vault and grab enemies.",
+      "metacritic": {
+        "score": null,
+        "reviews": 0,
+        "platform": "Nintendo 64",
+        "url": "https://www.metacritic.com/game/chameleon-twist/",
+        "user": {
+          "score": null,
+          "ratings": 1
+        }
+      }
+    },
+    {
+      "id": "bm64recomp",
+      "title": "Bomberman 64",
+      "port": "Bomberman 64: Recompiled",
+      "system": "n64",
+      "year": 1997,
+      "developer": "Hudson Soft",
+      "publisher": "Nintendo",
+      "kind": "Static recompilation",
+      "credits": [
+        {
+          "role": "Recompiled by",
+          "name": "RevoSucks"
+        }
+      ],
+      "repo": "RevoSucks/BM64Recomp",
+      "description": "Hudson's 3D Bomberman adventure and battle game, recompiled for PC.",
+      "filesToAdd": [
+        "portable.txt"
+      ],
+      "rom": {
+        "titles": [
+          "Bomberman 64"
+        ],
+        "regions": [
+          "USA"
+        ],
+        "setup": {
+          "type": "in-app"
+        },
+        "firstRun": "Choose \"Select ROM\" in the game's menu, then paste your ROM path with Ctrl+V."
+      },
+      "art": {
+        "boxart": [
+          "Bomberman 64 (USA)"
+        ],
+        "icon": "https://raw.githubusercontent.com/RevoSucks/BM64Recomp/refs/heads/master/icons/512.png"
+      },
+      "about": "Hudson Soft's first 3D Bomberman (1997), with a story mode and four-player battles.",
+      "metacritic": {
+        "score": null,
+        "reviews": 0,
+        "platform": "Nintendo 64",
+        "url": "https://www.metacritic.com/game/bomberman-64/",
+        "user": {
+          "score": 8.9,
+          "ratings": 7
+        }
+      }
+    },
+    {
+      "id": "bmherorecomp",
+      "title": "Bomberman Hero",
+      "port": "Bomberman Hero: Recompiled",
+      "system": "n64",
+      "year": 1998,
+      "developer": "Hudson Soft",
+      "publisher": "Nintendo",
+      "kind": "Static recompilation",
+      "credits": [
+        {
+          "role": "Recompiled by",
+          "name": "RevoSucks"
+        }
+      ],
+      "repo": "RevoSucks/BMHeroRecomp",
+      "description": "Bomberman's action-platformer outing, recompiled for PC.",
+      "filesToAdd": [
+        "portable.txt"
+      ],
+      "rom": {
+        "titles": [
+          "Bomberman Hero"
+        ],
+        "regions": [
+          "USA"
+        ],
+        "setup": {
+          "type": "in-app"
+        },
+        "firstRun": "Choose \"Select ROM\" in the game's menu, then paste your ROM path with Ctrl+V."
+      },
+      "art": {
+        "boxart": [
+          "Bomberman Hero (USA)"
+        ],
+        "icon": "https://raw.githubusercontent.com/RevoSucks/BMHeroRecomp/refs/heads/master/icons/app.png"
+      },
+      "about": "A 1998 action-platformer in which Bomberman goes solo through stage-based levels.",
+      "metacritic": {
+        "score": null,
+        "reviews": 0,
+        "platform": "Nintendo 64",
+        "url": "https://www.metacritic.com/game/bomberman-hero/",
+        "user": {
+          "score": 9.3,
+          "ratings": 6
+        }
+      }
+    },
+    {
+      "id": "drmario64recomp",
+      "title": "Dr. Mario 64",
+      "port": "Dr. Mario 64: Recompiled Plus",
+      "system": "n64",
+      "year": 2001,
+      "developer": "Newcom / Nintendo",
+      "publisher": "Nintendo",
+      "kind": "Static recompilation",
+      "credits": [
+        {
+          "role": "Recompiled by",
+          "name": "theboy181"
+        }
+      ],
+      "repo": "theboy181/drmario64_recomp_plus",
+      "description": "The N64 Dr. Mario, recompiled for PC with extras.",
+      "filesToAdd": [
+        "portable.txt"
+      ],
+      "rom": {
+        "titles": [
+          "Dr. Mario 64"
+        ],
+        "regions": [
+          "USA"
+        ],
+        "setup": {
+          "type": "in-app"
+        },
+        "firstRun": "Choose \"Select ROM\" in the game's menu, then paste your ROM path with Ctrl+V."
+      },
+      "art": {
+        "boxart": [
+          "Dr. Mario 64 (USA)"
+        ],
+        "icon": "https://raw.githubusercontent.com/theboy181/drmario64_recomp_plus/refs/heads/main/icons/512.png"
+      },
+      "about": "A late-era N64 puzzle game, released in North America in 2001, that added a story mode starring Mario and Wario.",
+      "metacritic": {
+        "score": 71,
+        "reviews": 13,
+        "platform": "Nintendo 64",
+        "url": "https://www.metacritic.com/game/dr-mario-64/",
+        "user": {
+          "score": 6.8,
+          "ratings": 32
+        }
+      }
+    },
+    {
+      "id": "pokestadiumrecomp",
+      "title": "Pokémon Stadium",
+      "port": "Pokémon Stadium: Recompiled",
+      "system": "n64",
+      "year": 1999,
+      "developer": "HAL Laboratory",
+      "publisher": "Nintendo",
+      "kind": "Static recompilation",
+      "credits": [
+        {
+          "role": "Recompiled by",
+          "name": "mstan"
+        }
+      ],
+      "repo": "mstan/PokemonStadiumRecomp",
+      "description": "Pokémon Stadium's battles and mini-games, recompiled for PC.",
+      "filesToAdd": [
+        "portable.txt"
+      ],
+      "rom": {
+        "titles": [
+          "Pokemon Stadium"
+        ],
+        "regions": [
+          "USA"
+        ],
+        "setup": {
+          "type": "in-app"
+        },
+        "firstRun": "Choose \"Select ROM\" in the game's menu, then paste your ROM path with Ctrl+V."
+      },
+      "art": {
+        "boxart": [
+          "Pokemon Stadium (USA)"
+        ],
+        "icon": "https://raw.githubusercontent.com/mstan/PokemonStadiumRecomp/refs/heads/main/assets/carts/yellow.png"
+      },
+      "about": "The first Pokémon Stadium released outside Japan. With the Transfer Pak you could battle using Pokémon carried over from the Game Boy games.",
+      "metacritic": {
+        "score": null,
+        "reviews": 0,
+        "platform": "Nintendo 64",
+        "url": "https://www.metacritic.com/game/pokemon-stadium/",
+        "user": {
+          "score": 8.1,
+          "ratings": 45
+        }
+      }
+    },
+    {
+      "id": "sk2recomp",
+      "title": "Snowboard Kids 2",
+      "port": "Snowboard Kids 2: Recompiled",
+      "system": "n64",
+      "year": 1999,
+      "developer": "Racdym",
+      "publisher": "Atlus",
+      "kind": "Static recompilation",
+      "credits": [
+        {
+          "role": "Recompiled by",
+          "name": "cdlewis"
+        }
+      ],
+      "repo": "cdlewis/snowboardkids2-recomp",
+      "description": "The cult-favourite kart-style snowboard racer, recompiled for PC.",
+      "filesToAdd": [
+        "portable.txt"
+      ],
+      "rom": {
+        "titles": [
+          "Snowboard Kids 2"
+        ],
+        "regions": [
+          "USA"
+        ],
+        "setup": {
+          "type": "in-app"
+        },
+        "firstRun": "Choose \"Select ROM\" in the game's menu, then paste your ROM path with Ctrl+V."
+      },
+      "art": {
+        "boxart": [
+          "Snowboard Kids 2 (USA)"
+        ],
+        "icon": "https://raw.githubusercontent.com/cdlewis/snowboardkids2-recomp/refs/heads/main/icons/512.png"
+      },
+      "about": "Racdym's 1999 sequel to Snowboard Kids: item-filled snowboard racing with shortcuts and a cult following.",
+      "metacritic": {
+        "score": null,
+        "reviews": 0,
+        "platform": "Nintendo 64",
+        "url": "https://www.metacritic.com/game/snowboard-kids-2/",
+        "user": {
+          "score": 9,
+          "ratings": 6
+        }
+      }
+    },
+    {
+      "id": "cvlodrecomp",
+      "title": "Castlevania: Legacy of Darkness",
+      "port": "Legacy of Darkness: Recompiled",
+      "system": "n64",
+      "year": 1999,
+      "developer": "Konami Computer Entertainment Kobe",
+      "publisher": "Konami",
+      "kind": "Static recompilation",
+      "credits": [
+        {
+          "role": "Recompiled by",
+          "name": "fliperama86"
+        }
+      ],
+      "repo": "fliperama86/cvlod_recomp",
+      "description": "Konami's expanded N64 Castlevania, recompiled for PC.",
+      "filesToAdd": [
+        "portable.txt"
+      ],
+      "rom": {
+        "titles": [
+          "Castlevania - Legacy of Darkness"
+        ],
+        "regions": [
+          "USA"
+        ],
+        "setup": {
+          "type": "in-app"
+        },
+        "firstRun": "Choose \"Select ROM\" in the game's menu, then paste your ROM path with Ctrl+V."
+      },
+      "art": {
+        "boxart": [
+          "Castlevania - Legacy of Darkness (USA)"
+        ],
+        "icon": "https://raw.githubusercontent.com/fliperama86/cvlod_recomp/refs/heads/main/src/main/lod_recomp.ico"
+      },
+      "about": "A 1999 expanded take on Castlevania 64 that adds Cornell, a werewolf, as a new playable character with his own story.",
+      "metacritic": {
+        "score": null,
+        "reviews": 0,
+        "platform": "Nintendo 64",
+        "url": "https://www.metacritic.com/game/castlevania-legacy-of-darkness/",
+        "user": {
+          "score": 6,
+          "ratings": 6
+        }
+      }
+    },
+    {
+      "id": "dusklight",
+      "title": "The Legend of Zelda: Twilight Princess",
+      "port": "Dusklight",
+      "system": "gc",
+      "year": 2006,
+      "developer": "Nintendo EAD",
+      "publisher": "Nintendo",
+      "kind": "Reimplementation",
+      "credits": [
+        {
+          "role": "Decompiled by",
+          "name": "ZeldaRET (tp)"
+        },
+        {
+          "role": "PC port by",
+          "name": "Twilit Realm"
+        }
+      ],
+      "repo": "TwilitRealm/dusklight",
+      "site": "https://twilitrealm.dev",
+      "description": "A reimplementation of Twilight Princess for PC, built on the decompilation, with options and enhancements.",
+      "rom": {
+        "discIds": [
+          "GZ2",
+          "RZD"
+        ],
+        "note": "Needs a disc image (.iso or .rvz) of your own copy. Every commercial release works except the Korean Wii version.",
+        "setup": {
+          "type": "in-app",
+          "reveal": true
+        },
+        "firstRun": "When the game asks for your disc image, paste the path from the clipboard or pick it from the Explorer window we opened.",
+        "formats": [
+          ".iso",
+          ".rvz"
+        ],
+        "formatNote": "A disc image of your own copy. .rvz is a smaller, compressed version of .iso."
+      },
+      "art": {
+        "boxart": [
+          "Legend of Zelda, The - Twilight Princess (USA)"
+        ]
+      },
+      "about": "Released in 2006 for both GameCube and Wii, Twilight Princess sends Link between Hyrule and the Twilight Realm, often in the form of a wolf.",
+      "metacritic": {
+        "score": 96,
+        "reviews": 16,
+        "platform": "GameCube",
+        "url": "https://www.metacritic.com/game/the-legend-of-zelda-twilight-princess/",
+        "user": {
+          "score": 8.9,
+          "ratings": 2640,
+          "platform": "Wii"
+        }
+      }
+    },
+    {
+      "id": "zelda3",
+      "title": "The Legend of Zelda: A Link to the Past",
+      "port": "zelda3",
+      "system": "snes",
+      "year": 1991,
+      "developer": "Nintendo EAD",
+      "publisher": "Nintendo",
+      "kind": "Reimplementation",
+      "credits": [
+        {
+          "role": "Reimplemented by",
+          "name": "snesrev"
+        }
+      ],
+      "repo": "snesrev/zelda3",
+      "description": "A C reimplementation of A Link to the Past with widescreen, higher frame rates and quality-of-life options, built from the game's code.",
+      "rom": {
+        "titles": [
+          "Legend of Zelda, The - A Link to the Past"
+        ],
+        "regions": [
+          "USA"
+        ],
+        "setup": {
+          "type": "file",
+          "path": "zelda3.sfc"
+        },
+        "note": "Needs the original USA release.",
+        "firstRun": "Your ROM is already next to the game as zelda3.sfc. Just play."
+      },
+      "art": {
+        "boxart": [
+          "Legend of Zelda, The - A Link to the Past (USA)"
+        ]
+      },
+      "about": "The 1991 Super Famicom adventure (1992 in the West) that defined the 2D Zelda games, with its Light World and Dark World.",
+      "exe": "zelda3\\.exe$"
+    },
+    {
+      "id": "smrev",
+      "title": "Super Metroid",
+      "port": "sm",
+      "system": "snes",
+      "year": 1994,
+      "developer": "Nintendo R&D1 / Intelligent Systems",
+      "publisher": "Nintendo",
+      "kind": "Reimplementation (build from source)",
+      "credits": [
+        {
+          "role": "Reimplemented by",
+          "name": "snesrev"
+        }
+      ],
+      "repo": "snesrev/sm",
+      "sourceOnly": true,
+      "description": "A C reimplementation of Super Metroid. No prebuilt downloads: you build it with your ROM.",
+      "rom": {
+        "titles": [
+          "Super Metroid"
+        ],
+        "setup": {
+          "type": "none"
+        }
+      },
+      "art": {
+        "boxart": [
+          "Super Metroid (Japan, USA) (En,Ja)"
+        ]
+      },
+      "about": "Super Metroid (1994) is the game the 'Metroidvania' genre is named for: a big, interconnected world that opens up as Samus gains new abilities."
+    }
+  ]
+}

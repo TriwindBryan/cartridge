@@ -6,6 +6,8 @@ Cartridge is free. If you enjoy it, you can support it on [Ko-fi](https://ko-fi.
 
 **Download:** [latest release](https://github.com/TriwindBryan/cartridge/releases/latest). Get the .msi installer or the portable .exe. Windows 10/11, 64-bit. Windows may say "Windows protected your PC" because Cartridge isn't code-signed yet; click **More info → Run anyway**.
 
+**Mac (Apple Silicon and Intel):** get the .dmg for your Mac from the same page, drag Cartridge to Applications, and the first time go to **System Settings → Privacy & Security → Open Anyway** (Cartridge isn't registered with Apple yet). Many ports are Windows-only; those show "No Mac build yet" on a Mac.
+
 The rest of this page is about building Cartridge yourself.
 
 ## Run it
@@ -13,11 +15,17 @@ The rest of this page is about building Cartridge yourself.
 1. Install Node.js once: `winget install OpenJS.NodeJS.LTS` (or the LTS installer from nodejs.org).
 2. Double-click **Start Cartridge.bat**. The first start downloads Electron (about a minute).
 
-To get a single portable `Cartridge-1.28.0-Portable.exe` you can share or keep anywhere, double-click **Build Portable EXE.bat**. The file appears in `dist\`.
+To get a single portable `Cartridge-1.30.0-Portable.exe` you can share or keep anywhere, double-click **Build Portable EXE.bat**. The file appears in `dist\`.
+
+## Mac builds
+
+Mac apps are built on GitHub (see LAUNCH.md): publishing a release, or **Actions → Build Cartridge → Run workflow**, produces `Cartridge-<version>-arm64.dmg` and `-x64.dmg`. On a Mac you can also run `npm install` then `npm run dist:mac`. The apps are ad-hoc signed (free, no Apple account). With an Apple Developer ID (about $99/year) they can be properly signed and notarized so the first-run warning goes away.
+
+On a Mac, Cartridge picks each port's Mac download (preferring Apple Silicon or universal builds on M-series Macs), unpacks .zip and .dmg files, and starts the game's .app. Data lives in `~/Library/Application Support/Cartridge`.
 
 ## Make an installer (.msi)
 
-Double-click **Build Installer (MSI).bat**. It runs the tests and builds `dist\Cartridge-1.28.0-Setup.msi` (the first build downloads Electron and the WiX installer tools, so it takes a few minutes). The installer:
+Double-click **Build Installer (MSI).bat**. It runs the tests and builds `dist\Cartridge-1.30.0-Setup.msi` (the first build downloads Electron and the WiX installer tools, so it takes a few minutes). The installer:
 
 - asks whether to install just for you (no admin rights needed) or for everyone on the PC, and where;
 - adds Cartridge to the Start menu and the desktop, with the cartridge icon;

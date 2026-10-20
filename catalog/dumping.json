@@ -1,0 +1,191 @@
+{
+  "_about": "How to make your own copy of a game, per console. Shown from each game's ROM slot and info panel. Links point to dumping.guide (a non-profit community wiki run by Hit Save!) and the official homebrew/emulator guides.",
+  "guides": [
+    {
+      "id": "n64",
+      "systems": ["n64", "n64dd"],
+      "title": "Dumping an N64 cartridge",
+      "steps": [
+        "Get a USB cartridge reader that supports N64 games. The Open Source Cartridge Reader is one; dumping.guide lists others.",
+        "Insert your cartridge and save it to your PC as a .z64 file.",
+        "Load it in Cartridge. It checks the dump is complete and the right version. .v64 and .n64 files are converted for you."
+      ],
+      "links": [
+        { "label": "N64 guide (dumping.guide)", "url": "https://dumping.guide/carts/nintendo/n64" },
+        { "label": "Open Source Cartridge Reader", "url": "https://github.com/oscartreader/oscr-firmware" }
+      ]
+    },
+    {
+      "id": "snes",
+      "systems": ["snes"],
+      "title": "Dumping a SNES cartridge",
+      "steps": [
+        "Get a USB cartridge reader that supports SNES games (dumping.guide lists several).",
+        "Insert your cartridge and save it to your PC as a .sfc file.",
+        "Load it in Cartridge. It checks the dump and removes old copier headers if there are any."
+      ],
+      "links": [{ "label": "SNES guide (dumping.guide)", "url": "https://dumping.guide/carts/nintendo/snes" }]
+    },
+    {
+      "id": "nes",
+      "systems": ["nes", "fds"],
+      "title": "Dumping a NES or Famicom game",
+      "steps": [
+        "Get a USB cartridge reader that supports NES/Famicom games (dumping.guide lists several).",
+        "Dump your cartridge to your PC as a .nes file.",
+        "Load it in Cartridge. It checks the dump against the No-Intro list."
+      ],
+      "links": [{ "label": "NES guide (dumping.guide)", "url": "https://dumping.guide/carts/nintendo/nes" }]
+    },
+    {
+      "id": "gb",
+      "systems": ["gb", "gbc"],
+      "title": "Dumping a Game Boy cartridge",
+      "steps": [
+        "Get a USB Game Boy cartridge reader (dumping.guide lists several).",
+        "Dump your cartridge to your PC as a .gb or .gbc file. Most readers can back up your save too.",
+        "Load it in Cartridge."
+      ],
+      "links": [{ "label": "Game Boy guide (dumping.guide)", "url": "https://dumping.guide/carts/nintendo/gameboy" }]
+    },
+    {
+      "id": "gba",
+      "systems": ["gba"],
+      "title": "Dumping a Game Boy Advance cartridge",
+      "steps": [
+        "Get a USB cartridge reader that supports GBA games (dumping.guide lists several).",
+        "Dump your cartridge to your PC as a .gba file.",
+        "Load it in Cartridge."
+      ],
+      "links": [{ "label": "GBA guide (dumping.guide)", "url": "https://dumping.guide/carts/nintendo/gba" }]
+    },
+    {
+      "id": "nds",
+      "systems": ["nds"],
+      "title": "Dumping a DS game",
+      "steps": [
+        "Follow the DS guide on dumping.guide. It covers dumping with a cartridge reader or with your own console.",
+        "Save the game as a .nds file and load it in Cartridge."
+      ],
+      "links": [{ "label": "DS guide (dumping.guide)", "url": "https://dumping.guide/carts/nintendo/ds" }]
+    },
+    {
+      "id": "3ds",
+      "systems": ["3ds"],
+      "title": "Dumping a 3DS game",
+      "steps": [
+        "On your own 3DS with homebrew set up, use GodMode9 to dump the cartridge or an installed game.",
+        "Copy the .3ds file from your SD card's gm9/out folder to your PC and load it in Cartridge."
+      ],
+      "links": [
+        { "label": "Dumping titles and cartridges (3DS Hacks Guide)", "url": "https://3ds.hacks.guide/dumping-titles-and-game-cartridges" },
+        { "label": "3DS guide (dumping.guide)", "url": "https://dumping.guide/carts/nintendo/3ds" }
+      ]
+    },
+    {
+      "id": "vb",
+      "systems": ["vb"],
+      "title": "Dumping a Virtual Boy cartridge",
+      "steps": ["Some cartridge readers support Virtual Boy with an adapter. See dumping.guide for the current options.", "Save it as a .vb file and load it in Cartridge."],
+      "links": [{ "label": "Virtual Boy guide (dumping.guide)", "url": "https://dumping.guide/carts/nintendo/virtualboy" }]
+    },
+    {
+      "id": "gcwii",
+      "systems": ["gc", "wii"],
+      "title": "Ripping a GameCube or Wii disc",
+      "steps": [
+        "On a Wii (or a Wii U in Wii mode) with the Homebrew Channel, run CleanRip.",
+        "Rip your disc to an SD card or USB drive. Use NTFS, or let CleanRip split the file, because Wii discs are bigger than 4 GB.",
+        "Copy the .iso to your PC and load it in Cartridge. It reads the disc ID to check it's the right game and region."
+      ],
+      "links": [
+        { "label": "Ripping games (Dolphin guide)", "url": "https://dolphin-emu.org/docs/guides/ripping-games/" },
+        { "label": "Nintendo discs (dumping.guide)", "url": "https://dumping.guide/discs/nintendo" }
+      ]
+    },
+    {
+      "id": "wiiu",
+      "systems": ["wiiu"],
+      "title": "Dumping a Wii U game",
+      "steps": [
+        "On your own Wii U with homebrew set up, dump the disc or installed game with the tools in the Wii U Hacks Guide.",
+        "Copy the dumped game folder to your PC and load it in Cartridge."
+      ],
+      "links": [{ "label": "Dumping Wii U discs (Wii U Hacks Guide)", "url": "https://wiiu.hacks.guide/dump-games.html" }]
+    },
+    {
+      "id": "segacart",
+      "systems": ["sg1000", "sms", "gg", "genesis", "32x"],
+      "title": "Dumping a Sega cartridge",
+      "steps": [
+        "Get a USB cartridge reader that supports your Sega system (dumping.guide lists several).",
+        "Dump your cartridge to your PC and load it in Cartridge."
+      ],
+      "links": [{ "label": "Sega cartridges (dumping.guide)", "url": "https://dumping.guide/carts/sega" }]
+    },
+    {
+      "id": "segadisc",
+      "systems": ["segacd", "saturn", "dreamcast"],
+      "title": "Ripping a Sega CD, Saturn or Dreamcast disc",
+      "steps": [
+        "Follow the Sega disc guide on dumping.guide. Most need a PC disc drive and a ripping tool; Dreamcast discs need a special method.",
+        "Load the .cue, .gdi or .chd file in Cartridge."
+      ],
+      "links": [{ "label": "Sega discs (dumping.guide)", "url": "https://dumping.guide/discs/sega" }]
+    },
+    {
+      "id": "psdisc",
+      "systems": ["ps1", "ps2", "pcecd", "neocd", "3do"],
+      "title": "Ripping a game disc on your PC",
+      "steps": [
+        "Put your disc in a PC disc drive (DVD drive for PS2) and rip it with a tool from the general disc guide on dumping.guide.",
+        "You get a .cue/.bin set or an .iso. Load it in Cartridge."
+      ],
+      "links": [{ "label": "Disc dumping guide (dumping.guide)", "url": "https://dumping.guide/discs/general" }]
+    },
+    {
+      "id": "ps3",
+      "systems": ["ps3"],
+      "title": "Dumping a PS3 game",
+      "steps": ["Follow the Redump PS3 guide. It covers dumping with a compatible Blu-ray drive or your own console.", "Load the dumped game folder in Cartridge."],
+      "links": [{ "label": "PS3 dumping guide (Redump)", "url": "https://wiki.redump.info/index.php?title=PlayStation_3_Dumping_Guide" }]
+    },
+    {
+      "id": "psp",
+      "systems": ["psp"],
+      "title": "Dumping a PSP game",
+      "steps": ["Follow the Redump PSP guide to dump your UMD with your own PSP.", "Load the .iso in Cartridge."],
+      "links": [{ "label": "PSP dumping guide (Redump)", "url": "https://wiki.redump.info/index.php?title=PlayStation_Portable_Dumping_Guide" }]
+    },
+    {
+      "id": "vita",
+      "systems": ["vita"],
+      "title": "Dumping a PS Vita game",
+      "steps": ["See the Sony section on dumping.guide for dumping Vita cartridges with your own console.", "Load the dumped game folder in Cartridge."],
+      "links": [{ "label": "Sony cartridges (dumping.guide)", "url": "https://dumping.guide/carts/sony" }]
+    },
+    {
+      "id": "xbox",
+      "systems": ["xbox", "x360"],
+      "title": "Dumping an Xbox or Xbox 360 disc",
+      "steps": ["Follow the Microsoft disc guide on dumping.guide.", "Load the .iso in Cartridge."],
+      "links": [{ "label": "Microsoft discs (dumping.guide)", "url": "https://dumping.guide/discs/microsoft" }]
+    },
+    {
+      "id": "pce",
+      "systems": ["pce", "sgx"],
+      "title": "Dumping a PC Engine / TurboGrafx-16 card",
+      "steps": ["Get a cartridge reader that supports HuCards (dumping.guide lists options).", "Dump it to a .pce file and load it in Cartridge."],
+      "links": [{ "label": "NEC guide (dumping.guide)", "url": "https://dumping.guide/carts/nec" }]
+    }
+  ],
+  "fallback": {
+    "id": "general",
+    "title": "Making a copy of your own game",
+    "steps": [
+      "dumping.guide has step-by-step guides for most consoles, cartridges and discs, with the tools to use.",
+      "Load the file you make in Cartridge. It tells you whether it's the version the port needs."
+    ],
+    "links": [{ "label": "dumping.guide", "url": "https://dumping.guide/" }]
+  }
+}

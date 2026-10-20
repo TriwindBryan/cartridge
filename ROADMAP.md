@@ -1,6 +1,6 @@
 # Cartridge roadmap
 
-Ideas that have been discussed but not built yet. Current version: 1.22.
+Ideas that have been discussed but not built yet. Current version: 1.29.
 
 ## Emulator support (planned, not started)
 
@@ -46,9 +46,9 @@ Check each one's current download location before building. Some publish on thei
 - **Emulator settings:** graphics and controller setup stay inside each emulator. Cartridge only starts games full screen.
 - **Identity:** Cartridge becomes a general game frontend (like LaunchBox or Playnite) that favours ports. Keep ports first in the interface.
 
-## Other platforms: Steam Deck / Linux, then Mac (planned, not started)
+## Other platforms: Mac (in testing from 1.29), Steam Deck / Linux (planned)
 
-Decided on October 18, 2026: hold off for now, keep for later. Suggested order: Steam Deck / Linux first, Mac second.
+Mac started October 18, 2026 (1.29): built on GitHub Actions, being tested on an M1 Max. Still to learn from testing: how each Mac port wants its ROM, and which catalog ports have Mac builds. Later: Apple Developer ID ($99/year) to sign and notarize. Steam Deck / Linux next.
 
 **What carries over unchanged:** ROM checking, covers, the catalog, the interface, backups, controller support. Electron runs on all three.
 
@@ -82,6 +82,11 @@ Decided on October 18, 2026: hold off for now, keep for later. Suggested order: 
 - Desktop shortcuts
 - Play stats
 - Self-update: download and run the new installer from inside Cartridge (1.19 only tells you a new version is out)
+
+## Launch status
+
+- **October 18, 2026:** Cartridge 1.28 released on GitHub (TriwindBryan/cartridge) and announced on Ko-fi (ko-fi.com/triwind). Soft launch: friends and Ko-fi first, wider sharing (Reddit, port Discords) after the first week's feedback.
+- Next: turn on GitHub Issues, collect logs from early users, fix what comes in, then the itch.io page and wider posts.
 
 ## Launch and money (decided October 18, 2026)
 

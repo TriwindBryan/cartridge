@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, dialog, shell, clipboard, nativeTheme, net } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, clipboard, nativeTheme, net, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { Library } = require('./src/core/library');
@@ -18,7 +18,7 @@ function startLog() {
     // keep it small: start over once it passes 512 KB
     if (fs.existsSync(logFile) && fs.statSync(logFile).size > 512 * 1024) fs.writeFileSync(logFile, '');
   } catch { /* ignore */ }
-  log(`---- Cartridge ${app.getVersion()} starting (Windows ${require('os').release()}, Electron ${process.versions.electron})`);
+  log(`---- Cartridge ${app.getVersion()} starting (${process.platform} ${require('os').release()} ${process.arch}, Electron ${process.versions.electron})`);
   // if the main process is ever stuck for more than 2 seconds, write down for how long
   let last = Date.now();
   const tick = setInterval(() => {
@@ -210,13 +210,18 @@ app.whenReady().then(async () => {
     return { found: !!user, root, userId: user && user.id, userDir: user && user.dir, running: await steam.isSteamRunning() };
   }
   async function closeSteam(root) {
-    const exe = process.platform === 'win32' ? path.join(root, 'steam.exe') : 'steam';
-    try { spawn(exe, ['-shutdown'], { detached: true, stdio: 'ignore' }).unref(); } catch { /* fall back to the URL */ }
+    if (process.platform === 'darwin') {
+      try { spawn('osascript', ['-e', 'quit app "Steam"'], { detached: true, stdio: 'ignore' }).unref(); } catch { /* fall back to the URL */ }
+    } else {
+      const exe = process.platform === 'win32' ? path.join(root, 'steam.exe') : 'steam';
+      try { spawn(exe, ['-shutdown'], { detached: true, stdio: 'ignore' }).unref(); } catch { /* fall back to the URL */ }
+    }
     shell.openExternal('steam://exit').catch(() => {});
     for (let i = 0; i < 40; i++) { await sleep(500); if (!(await steam.isSteamRunning())) return true; }
     return false;
   }
   function startSteam(root) {
+    if (process.platform === 'darwin') { try { spawn('open', ['-a', 'Steam'], { detached: true, stdio: 'ignore' }).unref(); } catch { shell.openExternal('steam://open/games').catch(() => {}); } return; }
     const exe = process.platform === 'win32' ? path.join(root, 'steam.exe') : 'steam';
     try { spawn(exe, [], { detached: true, stdio: 'ignore' }).unref(); } catch { shell.openExternal('steam://open/games').catch(() => {}); }
   }
@@ -227,7 +232,7 @@ app.whenReady().then(async () => {
   /** items: [{ id, art: { portrait, wide, hero, logo } }] — one Steam restart for any number of games. */
   handle('addToSteam', async (items) => {
     const info = await steamInfo();
-    if (!info.found) throw new Error("Couldn't find Steam on this PC. Install Steam and sign in once, then try again.");
+    if (!info.found) throw new Error(`Couldn't find Steam on this ${process.platform === 'darwin' ? 'Mac' : 'PC'}. Install Steam and sign in once, then try again.`);
     const wasRunning = info.running;
     if (wasRunning) {
       const { response } = await dialog.showMessageBox(win, {
@@ -311,7 +316,17 @@ app.whenReady().then(async () => {
   });
   handle('removeUserGame', (id) => lib.removeUserGame(id));
 
+  // Mac: a normal app menu, so Cmd+Q, Cmd+W, copy/paste and full screen work as Mac users expect
+  if (process.platform === 'darwin') {
+    Menu.setApplicationMenu(Menu.buildFromTemplate([
+      { role: 'appMenu' }, { role: 'editMenu' },
+      { label: 'View', submenu: [{ role: 'reload' }, { role: 'togglefullscreen' }, { type: 'separator' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }] },
+      { role: 'windowMenu' },
+    ]));
+  }
   createWindow();
+  // Mac: clicking the Dock icon with no window open brings one back
+  app.on('activate', () => { if (!win || win.isDestroyed()) createWindow(); else win.show(); });
   const tr = Date.now();
   lib.refreshReleases().then(() => log(`Checked ports for updates in ${((Date.now() - tr) / 1000).toFixed(1)}s`), (e) => log(`Checking ports for updates failed: ${e.message}`));
   // Pick up any ROMs added to the saved folders since last time.

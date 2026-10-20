@@ -2,6 +2,16 @@
 
 Everything needed to put Cartridge up for download: the steps, then text to paste into GitHub, itch.io and Ko-fi.
 
+## Every release from 1.29 on: GitHub builds it for you
+
+From 1.29, a workflow in `.github/workflows/release.yml` builds the Mac and Windows versions on GitHub's own machines. You don't need to build anything or attach files.
+
+1. **Upload the new code.** On your repository page: **Add file → Upload files**, drag in everything in your Cartridge folder **except** `node_modules` and `dist` (make sure the `.github` folder is included), then **Commit changes**. Existing files are replaced.
+2. **Make a test build (optional, but do it for the first Mac version).** Go to the **Actions** tab → **Build Cartridge** → **Run workflow** → **Run workflow**. After about 10–15 minutes, open the finished run and download **cartridge-mac** (the .dmg files) and **cartridge-windows** from **Artifacts** at the bottom. Send the Mac one to your tester with MAC-TESTING.md.
+3. **Publish the release.** **Releases → Draft a new release**, tag `v1.30` (always `v` + the version next to the logo), title `Cartridge 1.30`, paste the release text, then **Publish release**. About 10–15 minutes later the .dmg, .msi and portable .exe appear on the release by themselves. You can watch progress on the Actions tab.
+
+If a build fails, the Actions tab shows a red ✕; click it, open the failed step, and send the last lines.
+
 ## 1. Test first
 
 - [ ] Double-click **Build Installer (MSI).bat** and **Build Portable EXE.bat**. Both files end up in `dist\`.
@@ -27,10 +37,10 @@ The update check looks for releases at **github.com/TriwindBryan/cartridge**, so
 ## 3. Make the first release
 
 1. On the repository page: **Releases → Create a new release**.
-2. **Choose a tag** → type `v1.28` → **Create new tag**. (Always `v` + the version shown next to the logo. The update check compares this number.)
-3. Title: `Cartridge 1.28`
+2. **Choose a tag** → type `v1.30` → **Create new tag**. (Always `v` + the version shown next to the logo. The update check compares this number.)
+3. Title: `Cartridge 1.30`
 4. Paste the release text below.
-5. Drag in `dist\Cartridge-1.28.0-Setup.msi` and `dist\Cartridge-1.28.0-Portable.exe`.
+5. Drag in `dist\Cartridge-1.30.0-Setup.msi` and `dist\Cartridge-1.30.0-Portable.exe`.
 6. Click **Publish release**.
 
 For every later version: bump the version, build, and make a new release the same way with the new tag. Everyone on an older version sees a gold "v1.xx is out" button within 12 hours.
@@ -38,15 +48,21 @@ For every later version: bump the version, build, and make a new release the sam
 ### Release text (GitHub)
 
 ```markdown
-## Cartridge 1.28
+## Cartridge 1.30
 
 Cartridge is a free launcher for decompiled, recompiled and remade PC ports of classic games: Zelda 64: Recompiled, Ship of Harkinian, sm64coopdx, Perfect Dark and many more. It finds the ports, downloads them from their official releases, installs them, and starts them for you. You bring your own ROMs.
 
 ### Download
-- **Cartridge-1.28.0-Setup.msi**: the installer (recommended). Adds Start menu and desktop shortcuts; uninstall from Settings → Apps.
-- **Cartridge-1.28.0-Portable.exe**: a single file that runs without installing.
+**Windows**
+- **Cartridge-1.30.0-Setup.msi**: the installer (recommended). Adds Start menu and desktop shortcuts; uninstall from Settings → Apps.
+- **Cartridge-1.30.0-Portable.exe**: a single file that runs without installing.
 
 Windows 10 or 11, 64-bit.
+
+**Mac** (from 1.29)
+- **Cartridge-1.30.0-arm64.dmg** for Apple Silicon Macs (M1 and newer), **Cartridge-1.30.0-x64.dmg** for Intel Macs. Open it and drag Cartridge to Applications.
+- The first time, macOS says it can't verify the developer. Go to **System Settings → Privacy & Security** and click **Open Anyway**. Only once.
+- Fewer ports have Mac builds than Windows ones; Cartridge shows "No Mac build yet" for the rest.
 
 ### "Windows protected your PC"?
 Cartridge isn't code-signed yet (certificates cost money), so Windows SmartScreen warns about it. Click **More info → Run anyway**. The full source code is right here if you'd like to check it.
@@ -99,7 +115,7 @@ Full list of changes: [CHANGELOG.md](CHANGELOG.md)
 - Add a link to your profile: **Download Cartridge → https://github.com/TriwindBryan/cartridge/releases/latest**
 - First post:
 
-> **Cartridge 1.28 is out!** 🎮
+> **Cartridge 1.30 is out!** 🎮
 > My free launcher for decomp and recomp PC ports of classic games is ready to download. It finds the ports, installs them, checks your ROMs and launches everything from one 90s-style shelf, controller included.
 > Download: https://github.com/TriwindBryan/cartridge/releases/latest
 > It's free and always will be. Thanks to everyone who supports it here!

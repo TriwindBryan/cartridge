@@ -2,6 +2,26 @@
 
 Version numbers count up from 1.13: the next release is 1.14, then 1.15, and so on. The version shows next to the logo, in the window title and at the bottom of Settings.
 
+## 1.30 — October 19, 2026
+
+- **Fixed: on a Mac most text showed as question-mark boxes** (found testing on an M1 Max with macOS Sequoia). The boxes mean the text's font couldn't be loaded. Cartridge now ships its own fonts inside the app, all under the SIL Open Font License: **Anton** (the logo and headings, like Impact), **Archivo Black** (buttons, like Arial Black) and **Inter** (everything else). On a Mac (and Linux) these are used first, so text no longer depends on reaching the system's fonts. Windows keeps Impact, Arial Black and Segoe UI, with the bundled fonts as a backup.
+- The Steam artwork Cartridge draws uses the bundled font on a Mac too, and waits for it to load first.
+- The About page credits the fonts.
+
+## 1.29 — October 18, 2026
+
+**Mac version (first test build)**
+- Cartridge now runs on Macs, both Apple Silicon (M1 and newer) and Intel, as `Cartridge-1.29.0-arm64.dmg` and `-x64.dmg`.
+- On a Mac it picks each port's Mac download (Apple Silicon or universal builds first; Intel builds run through Rosetta), unpacks .zip and .dmg files, finds the game's .app and starts it. Play time, save backups and "back to Cartridge when the game closes" work as on Windows.
+- Games without a Mac build say "No Mac build yet" instead of offering a download that wouldn't run.
+- A proper Mac menu bar (Cmd+Q, copy/paste, full screen), the Dock icon reopens the window, and Add to Steam works with Steam for Mac.
+- Wording says Mac/macOS instead of Windows/PC where it matters.
+- Cartridge's own update check offers Mac users the .dmg for their chip.
+
+**Builds on GitHub**
+- A GitHub workflow builds the Mac and Windows versions whenever a release is published and attaches them automatically, so releases no longer need building on your PC. **Actions → Build Cartridge → Run workflow** makes a test build.
+- MAC-TESTING.md is a 20-minute checklist for testing on a Mac.
+
 ## 1.28 — October 18, 2026
 
 **Controllers**

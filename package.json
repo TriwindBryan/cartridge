@@ -1,7 +1,7 @@
 {
   "name": "cartridge-launcher",
   "productName": "Cartridge",
-  "version": "1.28.0",
+  "version": "1.30.0",
   "description": "A launcher for decompiled and recompiled retro game ports. Bring your ROMs, it does the rest.",
   "main": "main.js",
   "cartridge": {
@@ -15,11 +15,12 @@
     "test": "node --test test/core.test.js",
     "dist": "electron-builder --win portable",
     "dist:dir": "electron-builder --win dir",
-    "dist:msi": "electron-builder --win msi"
+    "dist:msi": "electron-builder --win msi",
+    "dist:mac": "electron-builder --mac dmg --arm64 --x64"
   },
   "devDependencies": {
     "electron": "^37.2.0",
-    "electron-builder": "^26.0.12"
+    "electron-builder": "^26.9.1"
   },
   "build": {
     "appId": "com.cartridge.launcher",
@@ -36,7 +37,8 @@
       "catalog/**/*",
       "build/icon.png",
       "package.json",
-      "LICENSE"
+      "LICENSE",
+      "build/icon-mac.png"
     ],
     "asarUnpack": [
       "src/core/rom.js",
@@ -63,7 +65,27 @@
       "upgradeCode": "6f3c2b1e-7a4d-4c8e-9b21-c4a7d2e5f091",
       "warningsAsErrors": false
     },
-    "msiProjectCreated": "build/msi-hook.js"
+    "msiProjectCreated": "build/msi-hook.js",
+    "mac": {
+      "icon": "build/icon-mac.png",
+      "category": "public.app-category.games",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "identity": "-",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "artifactName": "Cartridge-${version}-${arch}.dmg",
+      "title": "Cartridge ${version}"
+    }
   },
   "author": "TriwindBryan",
   "homepage": "https://github.com/TriwindBryan/cartridge",

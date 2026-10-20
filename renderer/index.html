@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https: data: file:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; font-src 'self' file: data:">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cartridge</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <script src="platform.js"></script>
+  <!-- airbrushed 90s sky: stars, flare, neon grid floor -->
+  <div class="sky" aria-hidden="true">
+    <div class="stars"></div>
+    <div class="flare"></div>
+    <div class="sun"></div>
+    <div class="floor"></div>
+  </div>
+
+  <div class="app">
+    <header class="top">
+      <div class="logo" aria-label="Cartridge"><span data-text="CARTRIDGE">CARTRIDGE</span><button class="ver" id="ver" data-view="about" title="About Cartridge"></button></div>
+      <nav class="tabs" id="tabs">
+        <button class="tab" data-view="shelf">Games <span class="count" id="c-all"></span></button>
+        <button class="tab" data-view="roms">My ROMs <span class="count" id="c-roms"></span></button>
+        <button class="tab" data-view="discover">Find more</button>
+        <button class="tab" data-view="settings">Settings</button>
+      </nav>
+      <label class="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M16 16l5 5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+        <input id="search" type="search" placeholder="Search games" autocomplete="off">
+      </label>
+      <button class="btn3d cyan" id="btn-load-rom" title="Pick ROM files">+ Load ROM</button>
+      <button class="btn3d purple small" id="btn-add-roms" title="Add a folder of ROMs (searched every time Cartridge starts)">ROM Folder</button>
+      <button class="update-pill" id="update-pill" hidden title="A new version of Cartridge is out"></button>
+      <button class="support-btn" id="btn-support" title="Cartridge is free. If you enjoy it, you can support it on Ko-fi."><span aria-hidden="true">♥</span><span class="lbl">Support</span></button>
+    </header>
+
+    <section class="hero" id="detail" aria-live="polite"></section>
+    <section class="view" id="view"></section>
+  </div>
+
+  <aside class="info" id="info" aria-label="Game details" aria-hidden="true"></aside>
+
+  <div class="dropzone" id="dropzone" hidden>
+    <div class="dropzone-inner">
+      <div class="burst big"><span>DROP<br>IT!</span></div>
+      <p class="drop-title">Drop ROMs to add them</p>
+      <p class="drop-sub">Any console from NES to Switch, plus arcade sets (CPS1/2/3, Neo Geo, NAOMI…): ROMs, discs and game folders, or a whole folder</p>
+    </div>
+  </div>
+
+  <div class="modal-back" id="modal" hidden></div>
+
+  <div class="toasts" id="toasts" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>
