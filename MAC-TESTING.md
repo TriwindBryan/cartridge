@@ -4,13 +4,14 @@ Thanks for helping! This takes about 20–30 minutes. Cartridge has only been te
 
 ## 1. Install it
 
-1. Download **Cartridge-1.30.0-arm64.dmg** (for M1/M2/M3/M4 Macs) from the link you were sent.
+1. Download **Cartridge-1.45.0-arm64.dmg** (for M1/M2/M3/M4 Macs) from the link you were sent.
 2. Open the .dmg and drag **Cartridge** into **Applications**.
 3. Open Cartridge from Applications. macOS will say it can't verify the developer (Cartridge isn't registered with Apple yet). Click **Done**, then go to **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** next to Cartridge. Confirm with your password. You only do this once.
 
 ## 2. Check these, and note what happens
 
-- [ ] **All text shows as letters, not boxes** (1.30 fixed the question-mark boxes from 1.29).
+- [x] **All text shows as letters, not boxes** (fixed in 1.30, confirmed).
+- [ ] Games without a Mac build (zelda3, most recomps) say **No Mac build yet** instead of Install.
 
 - [ ] Cartridge opens within a few seconds and looks right (logo, games, covers loading).
 - [ ] **Cmd+Q** quits; the menu bar shows Cartridge, Edit, View and Window menus.

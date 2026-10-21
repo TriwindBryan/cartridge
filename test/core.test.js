@@ -196,7 +196,12 @@ test('end to end: add ROMs, install from a fake GitHub release, launch', { skip:
   assert.equal(report[0].verified, true);
   assert.ok(report[0].unlocks.includes('Zelda 64: Recompiled'));
   assert.ok(report[0].unlocks.includes('2 Ship 2 Harkinian'));
-  const stored = lib.state.roms[0].file;
+  // the ROM stays in the user's zip; nothing is copied when it's added
+  assert.equal(lib.state.roms[0].file, path.join(romsIn, 'majora.zip'));
+  assert.equal(lib.state.roms[0].member, 'majora.v64');
+  assert.ok(!fs.existsSync(lib.dirs.roms) || !fs.readdirSync(lib.dirs.roms).length, 'no copies in the ROMs folder');
+  // a converted .z64 is made only when a game asks for the file
+  const stored = await lib.romPath(lib.state.roms[0]);
   assert.ok(stored.endsWith("Legend of Zelda, The - Majora's Mask (USA).z64"));
   assert.ok(fs.readFileSync(stored).equals(z), 'stored ROM is normalised to z64');
   assert.equal((await lib.addRoms([romsIn]))[0].status, 'duplicate');
@@ -324,7 +329,7 @@ test('community catalog: fetch, map systems, dedupe, add to shelf', async (t) =>
   t.after(() => { global.fetch = realFetch; });
 
   const items = await community.fetchCommunity();
-  assert.equal(items.length, 5, 'broken list skipped, duplicate removed, two EXIT games kept');
+  assert.equal(items.filter((c) => c.from !== 'cartridge').length, 5, 'broken list skipped, duplicate removed, two EXIT games kept');
   const eg = items.find((c) => c.repo === 'sonicdcer/ExtremeGRecomp');
   assert.equal(eg.system, 'n64');
   assert.equal(eg.kind, 'Static recompilation');
@@ -355,6 +360,131 @@ test('community catalog: fetch, map systems, dedupe, add to shelf', async (t) =>
 
   // Harbour Masters entries put the ROM next to the exe
   assert.equal(community.gameFromCandidate(items.find((c) => c.name === 'Super Mario 64')).rom.setup.type, 'beside-exe');
+});
+
+test('Recompendium: read the archive, parse its YAML, merge with the Quiver list', async (t) => {
+  const zlib = require('zlib');
+  const rc = require('../src/core/recompendium');
+  const community = require('../src/core/community');
+  // a .tar.gz built by hand, like GitHub's codeload archive (pax global header first)
+  const entry = (name, text, type = '0') => {
+    const data = Buffer.from(text, 'utf8');
+    const h = Buffer.alloc(512);
+    h.write(name.slice(-100), 0, 'utf8');
+    h.write('0000644\0', 100); h.write('0000000\0', 108); h.write('0000000\0', 116);
+    h.write(data.length.toString(8).padStart(11, '0') + '\0', 124);
+    h.write('00000000000\0', 136); h.write(type, 156); h.write('ustar\0', 257); h.write('00', 263);
+    h.fill(' ', 148, 156);
+    let sum = 0; for (const b of h) sum += b;
+    h.write(sum.toString(8).padStart(6, '0') + '\0 ', 148);
+    return Buffer.concat([h, data, Buffer.alloc((512 - (data.length % 512)) % 512)]);
+  };
+  const files = {
+    'unricopie-main/src/data/recomps/las.yaml': `name: "The Legend of Zelda: Link's Awakening"\nconsole: switch\nstatus: playable\nrepo: peiikai/LASRecomp\nauthor: peiikai\noriginalDeveloper: Grezzo\nyear: 2019\ndesc:\n  es: "Port"\n  en: "Native PC port of the Switch remake."\nrequirements:\n  en: "Your own Switch dump."\ntags:\n  - arm64\nlinks:\n  - label: { es: "Versi\u00f3n", en: "Web build" }\n    url: https://example.com/web\n  - label:\n      es: "Fork"\n      en: "Fork (macOS)"\n    url: https://example.com/fork\n`,
+    'unricopie-main/src/data/recomps/wwhd.yaml': 'name: The Legend of Zelda: The Wind Waker HD\nconsole: wiiu\nstatus: experimental\nrepo: ZeldaWWHDRecomp/ZeldaWWHDRecomp\ndesc:\n  en: "Wii U recomp."\n',
+    'unricopie-main/src/data/recomps/dead.yaml': 'name: Old One\nconsole: n64\nrepo: someone/old\nabandoned: true\ndesc:\n  en: x\n',
+    'unricopie-main/src/data/ports/ac.yaml': 'name: Animal Crossing\ncategory: decomp-port\nconsole: gamecube\nstatus: playable\nrepo: flyngmt/ACGC-PC-Port\noriginalDeveloper: Nintendo\ndesc:\n  en: "Native PC port, US version only."\n',
+    'unricopie-main/src/data/ports/remake.yaml': 'name: Some Remake (N64)\ncategory: fan-remake\nconsole: n64\nstatus: stable\nrepo: https://github.com/fan/remake\ndesc:\n  en: r\n',
+    'unricopie-main/src/data/decomps/sm64.yaml': 'name: sm64\nconsole: n64\nrepo: n64decomp/sm64\n',
+    'unricopie-main/src/data/stats.json': JSON.stringify({ 'peiikai/LASRecomp': { stars: 5, version: 'beta_4' }, 'flyngmt/ACGC-PC-Port': { stars: 9, version: null } }),
+    'unricopie-main/public/logo.svg': '<svg/>',
+  };
+  const tar = Buffer.concat([entry('pax_global_header', '52 comment=abcdef\n', 'g'), ...Object.entries(files).map(([n, x]) => entry(n, x)), Buffer.alloc(1024)]);
+  const gz = zlib.gzipSync(tar);
+
+  const y = rc.parseYaml(files['unricopie-main/src/data/recomps/las.yaml']);
+  assert.equal(y.name, "The Legend of Zelda: Link's Awakening");
+  assert.equal(y.year, 2019);
+  assert.equal(y.desc.en, 'Native PC port of the Switch remake.');
+  assert.deepEqual(y.tags, ['arm64']);
+  assert.deepEqual(y.links.map((l) => [l.label.en, l.url]), [['Web build', 'https://example.com/web'], ['Fork (macOS)', 'https://example.com/fork']]);
+
+  const realFetch = global.fetch;
+  global.fetch = async (url) => {
+    if (url === rc.ARCHIVE_URL) return { ok: true, status: 200, arrayBuffer: async () => gz.buffer.slice(gz.byteOffset, gz.byteOffset + gz.length) };
+    if (/index\.json$/.test(url)) return { ok: true, status: 200, json: async () => ({ lists: [{ remoteLocation: 'L1' }] }) };
+    if (url === 'L1') return { ok: true, status: 200, json: async () => ({ name: 'Nintendo', apps: [{ name: 'Animal Crossing', repository: 'flyngmt/ACGC-PC-Port', tags: ['decomp', 'gcn'] }] }) };
+    return { ok: false, status: 404 };
+  };
+  t.after(() => { global.fetch = realFetch; });
+
+  const rec = await rc.fetchRecompendium();
+  assert.deepEqual(rec.map((c) => c.repo).sort(), ['ZeldaWWHDRecomp/ZeldaWWHDRecomp', 'fan/remake', 'flyngmt/ACGC-PC-Port', 'peiikai/LASRecomp'], 'tools, decomps and abandoned entries are left out');
+  const las = rec.find((c) => c.repo === 'peiikai/LASRecomp');
+  assert.equal(las.system, 'switch');
+  assert.equal(las.kind, 'Static recompilation');
+  assert.equal(las.status, 'Playable');
+  assert.equal(las.needs, 'Your own Switch dump.');
+  assert.equal(las.get, 'download', 'has a release (from stats.json)');
+  assert.equal(las.needsFiles, true, 'Switch ports need files from the console');
+  assert.equal(rec.find((c) => c.repo === 'flyngmt/ACGC-PC-Port').get, 'build', 'no release: build it yourself');
+  assert.equal(rec.find((c) => c.repo === 'fan/remake').get, 'build');
+  assert.equal(rec.find((c) => c.repo === 'ZeldaWWHDRecomp/ZeldaWWHDRecomp').system, 'wiiu');
+  const remake = rec.find((c) => c.repo === 'fan/remake');
+  assert.equal(remake.kind, 'Reimplementation');
+  assert.equal(remake.name, 'Some Remake');
+
+  const all = await community.fetchCommunity();
+  const ac = all.filter((c) => c.repo === 'flyngmt/ACGC-PC-Port');
+  assert.equal(ac.length, 1, 'a port on both lists shows once');
+  assert.equal(ac[0].list, 'Nintendo', 'keeping the Quiver entry');
+  assert.equal(ac[0].status, 'Playable', 'with Recompendium details added');
+  assert.equal(ac[0].get, 'download', 'Quiver entries have releases');
+  assert.ok(all.some((c) => c.system === 'wiiu' && c.from === 'cartridge'), 'extra Wii U ports are listed');
+
+  const g = community.gameFromCandidate(las);
+  assert.equal(g.system, 'switch');
+  assert.equal(g.description, 'Native PC port of the Switch remake.');
+  assert.equal(g.developer, 'Grezzo');
+  assert.match(g.rom.note, /Your own Switch dump/);
+  assert.equal(g.needsFiles, true);
+  assert.equal(g.howToGet, 'download');
+
+  // still works when only one source answers
+  global.fetch = async (url) => (url === rc.ARCHIVE_URL ? { ok: true, status: 200, arrayBuffer: async () => gz.buffer.slice(gz.byteOffset, gz.byteOffset + gz.length) } : { ok: false, status: 500 });
+  assert.ok((await community.fetchCommunity()).some((c) => c.repo === 'peiikai/LASRecomp'));
+  global.fetch = async () => { throw new Error('fetch failed'); };
+  await assert.rejects(community.fetchCommunity(), /internet connection/);
+});
+
+test('a copy you built yourself can be added, played and removed without deleting it', async () => {
+  const work = tmp();
+  const lib = new Library({ dataDir: path.join(work, 'data'), catalogFile: path.join(__dirname, '..', 'catalog', 'games.json'), platform: 'win32' });
+  await lib.load();
+  const id = lib.games[0].id;
+  const own = path.join(work, 'MyBuild');
+  fs.mkdirSync(own, { recursive: true });
+  const bat = path.join(own, 'Play.bat');
+  fs.writeFileSync(bat, '@echo off\r\n');
+  await assert.rejects(lib.linkInstall(id, path.join(own, 'missing.exe')), /doesn't exist/);
+  const i = await lib.linkInstall(id, bat);
+  assert.equal(i.manual, true);
+  assert.equal(i.exe, bat);
+  lib.state.releases[id] = { data: { tag: 'v9.9' } };
+  const snap = lib.snapshot().games.find((g) => g.id === id);
+  assert.ok(snap.installed);
+  assert.equal(snap.updateAvailable, false, 'no update offers for your own copy');
+  await lib.uninstall(id);
+  assert.ok(!lib.state.installed[id]);
+  assert.ok(fs.existsSync(bat), 'your files are never deleted');
+});
+
+test('Help topics are complete and every ? button points at one', () => {
+  global.window = {};
+  require('../renderer/help.js');
+  const topics = global.window.HELP;
+  delete global.window;
+  const ids = topics.map((t) => t.id);
+  assert.equal(new Set(ids).size, ids.length, 'unique ids');
+  for (const t of topics) {
+    assert.ok(t.title && t.lead && t.steps.length >= 2, t.id);
+    for (const [, target] of t.actions || []) assert.ok(['shelf', 'roms', 'discover', 'settings', 'about', 'log'].includes(target), `${t.id}: ${target}`);
+  }
+  const app = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'app.js'), 'utf8');
+  const used = [...app.matchAll(/data-help-(?:tip|go)="([a-z]+)"/g)].map((m) => m[1]);
+  for (const id of new Set(used)) assert.ok(ids.includes(id), `missing help topic ${id}`);
+  for (const id of ['own', 'files', 'roms', 'find']) assert.ok(ids.includes(id), id);
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'renderer', 'index.html'), 'utf8'), /help\.js[\s\S]*app\.js/, 'help.js loads before app.js');
 });
 
 test('catalog Metacritic data is well formed', () => {
@@ -756,10 +886,11 @@ test('every system: Switch, Wii U, 3DS, PS3, Vita, Xbox, Sega discs, retro cartr
   assert.equal(entry('Super Mario 3D World').serial, 'WUP-P-ARDE');
   assert.equal(entry('Resistance: Fall of Man').serial, 'BCUS98174');
   assert.ok(entry('Super Mario Odyssey').file.endsWith('.nsp'), 'big files stay where they are');
-  // headers are stripped for hashing and the tidy copy
+  // headers are stripped for hashing; the original keeps its header and a headerless copy is made only on demand
   const bonk = lib.state.roms.find((r) => r.system === 'pce');
   assert.equal(bonk.size, 256 * 1024);
-  assert.equal(fs.statSync(bonk.file).size, 256 * 1024);
+  assert.equal(fs.statSync(bonk.file).size, 256 * 1024 + 512);
+  assert.equal(fs.statSync(await lib.romPath(bonk)).size, 256 * 1024);
 
   // a Switch port matches the dump by name
   const game = { id: 'x', system: 'switch', title: 'Super Mario Odyssey', port: 'Odyssey PC', rom: { titles: ['Super Mario Odyssey'] } };
@@ -902,7 +1033,7 @@ test('Cartridge update check, credits and safe defaults', async () => {
   const release = { tag_name: 'v9.9.0', html_url: 'https://github.com/triwind/cartridge/releases/tag/v9.9.0', body: 'notes',
     assets: [{ name: 'Cartridge-1.20.exe', browser_download_url: 'https://x/exe' }, { name: 'Cartridge-1.20-Setup.msi', browser_download_url: 'https://x/msi' }] };
   const fake = (rel, status = 200) => async () => ({ ok: status === 200, status, json: async () => rel });
-  const r = await update.checkForUpdate({ repo: 'triwind/cartridge', current: '1.20', fetchImpl: fake(release) });
+  const r = await update.checkForUpdate({ repo: 'triwind/cartridge', current: '1.20', fetchImpl: fake(release), platform: 'win32' });
   assert.equal(r.available, true);
   assert.equal(r.version, '9.9');
   assert.equal(r.download, 'https://x/msi');
@@ -1108,4 +1239,355 @@ test('Bundled fonts: every @font-face file exists and is licensed', () => {
   const html = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
   assert.match(html, /font-src 'self'/);
   assert.ok(html.indexOf('platform.js') < html.indexOf('app.js'));
+});
+
+test('Mac and Linux never pick a download that is probably the Windows build', () => {
+  const a = (names) => names.map((name) => ({ name, size: 1, browser_download_url: `https://x/${name}` }));
+  // zelda3 publishes one zip with no system in its name: it's for Windows
+  assert.equal(gh.pickAsset(a(['zelda3_v0.3.zip']), 'win32').name, 'zelda3_v0.3.zip');
+  assert.equal(gh.pickAsset(a(['zelda3_v0.3.zip']), 'darwin', null, 'arm64'), null);
+  assert.equal(gh.pickAsset(a(['zelda3_v0.3.zip']), 'linux'), null);
+  // but Mac downloads without "mac" in the name still count when they're disk images
+  assert.equal(gh.pickAsset(a(['Game-1.0.dmg', 'Game-1.0.zip']), 'darwin', null, 'arm64').name, 'Game-1.0.dmg');
+  assert.equal(gh.pickAsset(a(['game-osx.zip', 'game.zip']), 'darwin', null, 'arm64').name, 'game-osx.zip');
+});
+
+test('ROMs are never copied, and copies from older versions are cleaned up', async () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'cart-nocopy-'));
+  const mine = path.join(work, 'My ROMs');
+  fs.mkdirSync(mine, { recursive: true });
+  const z64 = Buffer.alloc(1024 * 1024); z64.writeUInt32BE(0x80371240, 0); z64.write('NOCOPY TEST         ', 0x20, 'latin1');
+  fs.writeFileSync(path.join(mine, 'game.z64'), z64);
+  const lib = new Library({ dataDir: path.join(work, 'data'), catalogFile: path.join(__dirname, '..', 'catalog', 'games.json'), platform: 'linux' });
+  await lib.load();
+  lib.state.settings.libraryDir = path.join(work, 'Cartridge');
+  lib.state.settings.romFolders = [mine];
+
+  // an older Cartridge's copy of the same ROM, still in the library
+  fs.mkdirSync(lib.dirs.roms, { recursive: true });
+  const copy = path.join(lib.dirs.roms, 'game.z64');
+  fs.writeFileSync(copy, z64);
+  const sha = require('crypto').createHash('sha1').update(z64).digest('hex').toUpperCase();
+  lib.state.roms.push({ id: sha, file: copy, originalName: 'game.z64', system: 'n64', sha1: sha, size: z64.length, format: 'z64' });
+  assert.equal((await lib.romCopies()).count, 1);
+
+  const res = await lib.migrateRomCopies();
+  assert.equal(res.relinked, 1);
+  assert.equal(res.freed, z64.length);
+  assert.equal(lib.state.roms.length, 1);
+  assert.equal(lib.state.roms[0].file, path.join(mine, 'game.z64'), 'points at the original now');
+  assert.ok(!fs.existsSync(copy), 'the old copy is gone');
+  assert.equal(await lib.romPath(lib.state.roms[0]), path.join(mine, 'game.z64'), 'a plain .z64 is used as it is');
+  assert.equal(await lib.migrateRomCopies(), null, 'runs once');
+
+  // adding more ROMs never writes anything into Cartridge's folders
+  fs.writeFileSync(path.join(mine, 'other.z64'), Buffer.concat([z64.subarray(0, 0x40), Buffer.alloc(z64.length - 0x40, 1)]));
+  await lib.addRoms([mine]);
+  assert.ok(!fs.readdirSync(lib.dirs.roms).length, 'ROMs folder stays empty');
+});
+
+test('safety: zips unpack one at a time, only real copies are deleted, missing ROMs are tracked', async () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'cart-safe-'));
+  const mine = path.join(work, 'My ROMs');
+  fs.mkdirSync(mine, { recursive: true });
+  const n64 = (tag) => { const b = Buffer.alloc(256 * 1024); b.writeUInt32BE(0x80371240, 0); b.write(tag.padEnd(20), 0x20, 'latin1'); b.write(tag, 0x100, 'latin1'); return b; };
+  // three zipped ROMs
+  for (const t of ['ZIPA', 'ZIPB', 'ZIPC']) {
+    const src = path.join(work, `${t}.z64`);
+    fs.writeFileSync(src, n64(t));
+    execFileSync('zip', ['-qj', path.join(mine, `${t}.zip`), src]);
+    fs.rmSync(src);
+  }
+  const lib = new Library({ dataDir: path.join(work, 'data'), catalogFile: path.join(__dirname, '..', 'catalog', 'games.json'), platform: 'linux' });
+  await lib.load();
+  lib.state.settings.libraryDir = path.join(work, 'Cartridge');
+  lib.state.settings.romFolders = [mine];
+  // count temporary folders that exist at once while the scan runs
+  let most = 0;
+  const realInspect = rom.inspectRom;
+  lib.hooks.inspectRom = async (f) => {
+    const live = fs.readdirSync(os.tmpdir()).filter((d) => d.startsWith('cartridge-rom-')).length;
+    most = Math.max(most, live);
+    return realInspect(f);
+  };
+  const before = fs.readdirSync(os.tmpdir()).filter((d) => d.startsWith('cartridge-rom-')).length;
+  const report = await lib.addRoms([mine]);
+  assert.equal(report.filter((r) => r.status === 'added').length, 3);
+  assert.ok(most - before <= 1, `only one zip unpacked at a time (saw ${most - before})`);
+  assert.equal(fs.readdirSync(os.tmpdir()).filter((d) => d.startsWith('cartridge-rom-')).length, before, 'temporary folders cleaned up');
+
+  // a full drive stops with a plain message instead of failing silently
+  const disk = require('../src/core/disk');
+  const e = disk.spaceError('C:\\Users\\x', 2e9, 1e8);
+  assert.match(e.message, /drive is too full: this needs about 2\.0 GB free and there's 100 MB/);
+  assert.ok((await disk.freeBytes(path.join(work, 'no', 'such', 'folder'))) > 0, 'free space found from a parent folder');
+
+  // strict deleting: a copy goes; its neighbours and anything in a watched folder never do
+  fs.mkdirSync(path.join(lib.dirs.roms, 'Disc'), { recursive: true });
+  const copy = path.join(lib.dirs.roms, 'Disc', 'copy.z64');
+  const neighbour = path.join(lib.dirs.roms, 'Disc', 'mine-too.z64');
+  fs.writeFileSync(copy, 'x'); fs.writeFileSync(neighbour, 'y');
+  assert.equal(await lib.deleteRomCopy(copy), 1);
+  assert.ok(!fs.existsSync(copy) && fs.existsSync(neighbour), 'only the copy itself is deleted, not its folder');
+  lib.state.settings.romFolders = [mine, path.join(lib.dirs.roms, 'Disc')];
+  assert.equal(lib.isRomCopy(neighbour), false, 'a watched folder holds your own files');
+  assert.equal(await lib.deleteRomCopy(neighbour), 0);
+  assert.ok(fs.existsSync(neighbour));
+  assert.equal(await lib.deleteRomCopy(path.join(mine, 'ZIPA.zip')), 0, 'never outside Cartridge\'s ROMs folder');
+  assert.ok(fs.existsSync(path.join(mine, 'ZIPA.zip')));
+  lib.state.settings.romFolders = [mine];
+
+  // a ROM that moves is found again; one that's deleted from a watched folder is forgotten; files are untouched
+  const moved = path.join(mine, 'moved');
+  fs.mkdirSync(moved);
+  fs.renameSync(path.join(mine, 'ZIPB.zip'), path.join(moved, 'ZIPB.zip'));
+  fs.rmSync(path.join(mine, 'ZIPC.zip'));
+  // a ROM from somewhere else (a drive that's unplugged) is kept, marked missing
+  lib.state.roms.push({ id: 'usb', file: path.join(work, 'USB', 'gone.z64'), system: 'n64', size: 1 });
+  const rep2 = await lib.scanRomFolders();
+  const byName = (t) => lib.state.roms.find((r) => r.internalName && r.internalName.startsWith(t));
+  assert.equal(rep2.filter((r) => r.status === 'relinked').length, 1, 'moved ROM relinked');
+  assert.equal(byName('ZIPB').file, path.join(moved, 'ZIPB.zip'));
+  assert.ok(!byName('ZIPB').missing);
+  assert.ok(!byName('ZIPC'), 'deleted ROM forgotten');
+  assert.equal(lib.state.roms.find((r) => r.id === 'usb').missing, true, 'ROM elsewhere kept, marked missing');
+  const snap = lib.snapshot();
+  assert.ok(snap.roms.find((r) => r.id === 'usb').missing);
+  assert.equal(await lib.forgetMissing(), 1);
+  assert.ok(!lib.state.roms.some((r) => r.id === 'usb'));
+});
+
+test('Check my setup finds problems and fixes only Cartridge\'s own leftovers', async () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'cart-setup-'));
+  const lib = new Library({ dataDir: path.join(work, 'data'), catalogFile: path.join(__dirname, '..', 'catalog', 'games.json'), platform: 'linux' });
+  await lib.load();
+  lib.state.settings.libraryDir = path.join(work, 'Cartridge');
+  const mine = path.join(work, 'roms');
+  fs.mkdirSync(mine);
+  lib.state.settings.romFolders = [mine, path.join(work, 'unplugged')];
+  const id = lib.games[0].id;
+  lib.state.installed[id] = { tag: 'v1', dir: path.join(work, 'gone'), exe: path.join(work, 'gone', 'game.exe') };
+  lib.state.roms.push({ id: 'lost', file: path.join(work, 'elsewhere', 'lost.z64'), system: 'n64', size: 1 });
+  fs.mkdirSync(lib.dirs.downloads, { recursive: true });
+  fs.writeFileSync(path.join(lib.dirs.downloads, 'big.zip'), Buffer.alloc(60e6));
+  const keep = path.join(mine, 'mine.z64');
+  fs.writeFileSync(keep, 'x');
+
+  const r = await lib.checkSetup();
+  const ids = r.issues.map((x) => x.id);
+  assert.ok(ids.includes('downloads'), 'leftover downloads');
+  assert.ok(ids.includes(`folder-${path.join(work, 'unplugged')}`), 'unreachable folder');
+  assert.ok(ids.includes('missing'), 'missing ROM');
+  assert.ok(ids.includes(`install-${id}`), 'missing game files');
+  for (const x of r.issues) if (x.fix) assert.ok(x.fix.label && x.fix.id, x.id);
+
+  await lib.fixSetup('clear-downloads');
+  assert.equal(fs.readdirSync(lib.dirs.downloads).length, 0);
+  await lib.fixSetup(`unwatch:${path.join(work, 'unplugged')}`);
+  assert.deepEqual(lib.state.settings.romFolders, [mine]);
+  await lib.fixSetup(`forget-install:${id}`);
+  assert.ok(!lib.state.installed[id]);
+  await lib.fixSetup('forget-missing');
+  assert.ok(!lib.state.roms.some((x) => x.id === 'lost'));
+  assert.ok(fs.existsSync(keep), 'your files are never touched');
+  const again = await lib.checkSetup();
+  assert.deepEqual(again.issues.filter((x) => !/^space-/.test(x.id)).map((x) => x.id), []);
+});
+
+test('favorites, new ports since your last visit, and color themes', async () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'cart-fav-'));
+  const lib = new Library({ dataDir: path.join(work, 'data'), catalogFile: path.join(__dirname, '..', 'catalog', 'games.json'), platform: 'linux' });
+  await lib.load();
+  const id = lib.games[0].id;
+  await lib.setFavorite(id, true);
+  assert.equal(lib.snapshot().games.find((g) => g.id === id).favorite, true);
+  await lib.setFavorite(id, false);
+  assert.equal(lib.snapshot().games.find((g) => g.id === id).favorite, false);
+
+  const item = (k) => ({ key: `${k}#`, repo: k, name: k, project: k, system: 'n64', kind: 'Native PC port', tags: [] });
+  // first list ever: the baseline, nothing is new
+  await lib.discoverVisited();
+  let marked = lib.markCommunity([item('a/one'), item('a/two')]);
+  assert.equal(marked.items.filter((c) => c.isNew).length, 0);
+  // a later session: a port that appeared since the last visit is new, and stays new for the whole session
+  lib.discoverPrev = null;
+  lib.state.discoverVisitedAt = Date.now() - 1000;
+  await lib.discoverVisited();
+  await new Promise((r) => setTimeout(r, 5));
+  marked = lib.markCommunity([item('a/one'), item('a/two'), item('b/three')]);
+  assert.deepEqual(marked.items.filter((c) => c.isNew).map((c) => c.repo), ['b/three']);
+  await lib.discoverVisited();
+  assert.deepEqual(lib.markCommunity([item('a/one'), item('a/two'), item('b/three')]).items.filter((c) => c.isNew).map((c) => c.repo), ['b/three']);
+
+  // themes: every preset has every color, and custom colors sit on top of the preset they started from
+  global.window = {};
+  require('../renderer/themes.js');
+  const { THEMES, THEME_KEYS, themeColors } = global.window;
+  for (const t of THEMES) for (const [k] of THEME_KEYS) assert.match(t.colors[k], /^#[0-9a-f]{6}$/i, `${t.id}.${k}`);
+  assert.equal(themeColors(undefined).magenta, '#c8161d', 'Cartridge Red by default');
+  const c = themeColors({ preset: 'custom', base: 'midnight', custom: { magenta: '#123456' } });
+  assert.equal(c.magenta, '#123456');
+  assert.equal(c.gold, THEMES.find((t) => t.id === 'midnight').colors.gold);
+  delete global.window;
+  const css = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'styles.css'), 'utf8');
+  assert.ok(!/rgba\(\s*226,\s*52,\s*43/.test(css.slice(css.indexOf('* { box-sizing'))), 'the reds follow the theme');
+});
+
+test('Xbox 360: full disc dumps, trimmed isos and Games on Demand are recognised', async () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'cart-xdisc-'));
+  // write an XDVDFS volume (magic + root folder holding the game file) at a partition offset, as a sparse file
+  const xdvdfs = (file, part, gameFile, total) => {
+    const fd = fs.openSync(file, 'w');
+    const vd = Buffer.alloc(32);
+    vd.write('MICROSOFT*XBOX*MEDIA', 0, 'latin1');
+    vd.writeUInt32LE(0x40, 20); // root folder at sector 0x40
+    vd.writeUInt32LE(2048, 24);
+    fs.writeSync(fd, vd, 0, 32, part + 0x10000);
+    const root = Buffer.alloc(2048);
+    root.writeUInt8(gameFile.length, 13); root.write(gameFile, 14, 'latin1');
+    fs.writeSync(fd, root, 0, 2048, part + 0x40 * 2048);
+    fs.ftruncateSync(fd, total);
+    fs.closeSync(fd);
+  };
+  const GB = 1024 * 1024 * 1024;
+  xdvdfs(path.join(work, 'Halo 3 (USA).iso'), 0xfd90000, 'default.xex', 7 * GB); // XGD2: most 360 games
+  xdvdfs(path.join(work, 'Forza Horizon (USA).iso'), 0x2080000, 'default.xex', 8 * GB); // XGD3
+  xdvdfs(path.join(work, 'Gears of War (trimmed).iso'), 0, 'default.xex', 2 * GB); // extract-xiso output
+  xdvdfs(path.join(work, 'Halo (original Xbox).iso'), 0, 'default.xbe', 1 * GB);
+  for (const [name, want] of [['Halo 3 (USA).iso', 'x360'], ['Forza Horizon (USA).iso', 'x360'], ['Gears of War (trimmed).iso', 'x360'], ['Halo (original Xbox).iso', 'xbox']]) {
+    const f = path.join(work, name);
+    assert.equal(rom.sniffSystem(f, fs.statSync(f).size), want, name);
+  }
+
+  // Games on Demand: <TitleID>/00007000/<package> with no extension, an STFS "LIVE" file carrying the name
+  const god = path.join(work, 'GOD', '4D5307E6', '00007000');
+  fs.mkdirSync(god, { recursive: true });
+  const pkg = Buffer.alloc(0x2000);
+  pkg.write('LIVE', 0, 'latin1');
+  pkg.writeUInt32BE(0x7000, 0x344);
+  pkg.writeUInt32BE(0x4D5307E6, 0x360);
+  const name = Buffer.from('Halo 3', 'utf16le'); name.swap16(); name.copy(pkg, 0x411);
+  fs.writeFileSync(path.join(god, '2DFD4B7F9DD1A2D2D3E4'), pkg);
+  fs.mkdirSync(path.join(god, '2DFD4B7F9DD1A2D2D3E4.data'));
+  fs.writeFileSync(path.join(god, '2DFD4B7F9DD1A2D2D3E4.data', 'Data0000'), Buffer.alloc(4096));
+
+  const lib = new Library({ dataDir: path.join(work, 'data'), catalogFile: path.join(__dirname, '..', 'catalog', 'games.json'), platform: 'linux' });
+  await lib.load();
+  lib.state.settings.libraryDir = path.join(work, 'Cartridge');
+  const report = await lib.addRoms([work]);
+  const added = report.filter((r) => r.status === 'added');
+  assert.equal(report.filter((r) => r.status === 'error').length, 0, JSON.stringify(report.filter((r) => r.status === 'error')));
+  assert.deepEqual(added.map((r) => r.system).sort(), ['x360', 'x360', 'x360', 'x360', 'xbox']);
+  const godRom = lib.state.roms.find((r) => r.serial === '4D5307E6');
+  assert.ok(godRom, 'Games on Demand package found');
+  assert.equal(godRom.internalName, 'Halo 3');
+  assert.ok(!fs.existsSync(lib.dirs.roms) || !fs.readdirSync(lib.dirs.roms).length, 'nothing copied');
+});
+
+test('3DS: compressed formats, big archives listed without unpacking, clean names', { skip: process.platform === 'win32' && 'uses zip' }, async () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'cart-ctr-'));
+  const games = path.join(work, 'Games');
+  fs.mkdirSync(games);
+  // a .3ds (NCSD) with its product code, an Azahar-compressed .zcci, and a .cia inside a "big" zip
+  const ncsd = Buffer.alloc(0x5000); ncsd.write('NCSD', 0x100, 'latin1'); ncsd.write('CTR-P-AMKE', 0x4150, 'latin1');
+  fs.writeFileSync(path.join(games, '0337 - Mario Kart 7 (USA) Decrypted.3ds'), ncsd);
+  fs.writeFileSync(path.join(games, 'Super Mario 3D Land (USA).zcci'), Buffer.alloc(4096, 7));
+  fs.writeFileSync(path.join(work, 'Animal Crossing - New Leaf (USA).cia'), Buffer.alloc(300 * 1024, 3));
+  execFileSync('zip', ['-q', path.join(games, 'acnl.zip'), 'Animal Crossing - New Leaf (USA).cia'], { cwd: work });
+
+  assert.equal(rom.systemForExtension('x.zcia'), '3ds');
+  assert.equal(rom.nameFromFile('0337 - Mario Kart 7 (USA) Decrypted.3ds'), 'Mario Kart 7');
+  const listed = await inst.listArchive(path.join(games, 'acnl.zip'));
+  assert.deepEqual(listed.map((f) => f.name), ['Animal Crossing - New Leaf (USA).cia']);
+  assert.equal(listed[0].size, 300 * 1024);
+
+  const lib = new Library({ dataDir: path.join(work, 'data'), catalogFile: path.join(__dirname, '..', 'catalog', 'games.json'), platform: 'linux' });
+  await lib.load();
+  lib.state.settings.libraryDir = path.join(work, 'Cartridge');
+  lib.bigArchiveBytes = 1; // treat every zip as "big", so it's only listed
+  const report = await lib.addRoms([games]);
+  assert.equal(report.filter((r) => r.status === 'error').length, 0, JSON.stringify(report));
+  const by = (name) => lib.state.roms.find((r) => r.internalName === name);
+  assert.equal(by('Mario Kart 7').serial, 'CTR-P-AMKE');
+  assert.equal(by('Super Mario 3D Land').system, '3ds');
+  const acnl = by('Animal Crossing - New Leaf');
+  assert.equal(acnl.file, path.join(games, 'acnl.zip'));
+  assert.equal(acnl.member, 'Animal Crossing - New Leaf (USA).cia');
+  // unpacked only when a game needs the file
+  const p = await lib.romPath(acnl);
+  assert.equal(fs.statSync(p).size, 300 * 1024);
+});
+
+test('Modern consoles and Dreamcast CHDs are recognised', async () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'cart-modern-'));
+  const mk = (rel, data) => { const f = path.join(work, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, data); return f; };
+  const sfo = (entries) => { // a minimal PARAM.SFO with UTF-8 string values
+    const keys = Object.keys(entries);
+    let kt = Buffer.alloc(0); let dt = Buffer.alloc(0); const idx = [];
+    for (const k of keys) {
+      const v = Buffer.from(entries[k] + '\0');
+      idx.push({ ko: kt.length, dof: dt.length, len: v.length });
+      kt = Buffer.concat([kt, Buffer.from(k + '\0')]); dt = Buffer.concat([dt, v]);
+    }
+    const head = Buffer.alloc(20); head.write('\0PSF', 0, 'latin1'); head.writeUInt32LE(0x101, 4);
+    const tableLen = 16 * keys.length;
+    head.writeUInt32LE(20 + tableLen, 8); head.writeUInt32LE(20 + tableLen + kt.length, 12); head.writeUInt32LE(keys.length, 16);
+    const table = Buffer.alloc(tableLen);
+    idx.forEach((e, i) => { table.writeUInt16LE(e.ko, i * 16); table.writeUInt16LE(0x0204, i * 16 + 2); table.writeUInt32LE(e.len, i * 16 + 4); table.writeUInt32LE(e.len, i * 16 + 8); table.writeUInt32LE(e.dof, i * 16 + 12); });
+    return Buffer.concat([head, table, kt, dt]);
+  };
+  // PS4: a package, and a dumped folder (sce_sys/param.sfo + eboot.bin) with a CUSA title ID
+  const pkg = Buffer.alloc(0x100); pkg.write('\x7fCNT', 0, 'latin1'); pkg.write('UP9000-CUSA00900_00-BLOODBORNE000000', 0x40, 'latin1');
+  mk('PS4/Bloodborne.pkg', pkg);
+  mk('Games/God of War/sce_sys/param.sfo', sfo({ TITLE: 'God of War', TITLE_ID: 'CUSA07408' }));
+  mk('Games/God of War/eboot.bin', Buffer.alloc(1024));
+  // Vita folder stays Vita
+  mk('Games/Persona 4 Golden/sce_sys/param.sfo', sfo({ TITLE: 'Persona 4 Golden', TITLE_ID: 'PCSE00120' }));
+  mk('Games/Persona 4 Golden/eboot.bin', Buffer.alloc(1024));
+  // PS5: sce_sys/param.json + eboot.bin
+  mk('Games/Astro Bot/sce_sys/param.json', JSON.stringify({ titleId: 'PPSA01234', localizedParameters: { defaultLanguage: 'en-US', 'en-US': { titleName: 'Astro Bot' } } }));
+  mk('Games/Astro Bot/eboot.bin', Buffer.alloc(1024));
+  // Xbox One / Series: MicrosoftGame.config
+  mk('Xbox One/Halo 5/MicrosoftGame.config', '<Game><ShellVisuals DefaultDisplayName="Halo 5: Guardians"/></Game>');
+  mk('Xbox Series/Starfield/MicrosoftGame.config', '<Game><ShellVisuals DefaultDisplayName="Starfield"/></Game>');
+  // Switch 2: same file types as Switch, told apart by the folder
+  mk('Switch 2/Mario Kart World [0100000000000000].xci', Buffer.alloc(4096));
+  // PS3 digital game folder (PSN): PARAM.SFO + USRDIR
+  mk('PS3/NPUB30910/PARAM.SFO', sfo({ TITLE: 'Journey', TITLE_ID: 'NPUA80068' }));
+  mk('PS3/NPUB30910/USRDIR/EBOOT.BIN', Buffer.alloc(1024));
+  // Wii U: NUS folder (title.tmd + .app files) and a .wuhb bundle
+  const tmd = Buffer.alloc(0x200); tmd.write('0005000010145D00', 0x18c, 'hex');
+  mk('Wii U/Mario Kart 8 [0005000010145D00]/title.tmd', tmd);
+  mk('Wii U/Mario Kart 8 [0005000010145D00]/title.tik', Buffer.alloc(0x350));
+  mk('Wii U/Mario Kart 8 [0005000010145D00]/00000000.app', Buffer.alloc(4096));
+  mk('Wii U/Mario Kart 8 [0005000010145D00]/00000001.app', Buffer.alloc(4096));
+  mk('Wii U/Homebrew Launcher.wuhb', Buffer.alloc(4096));
+  // CHDs: a GD-ROM (Dreamcast) and a DVD (PS2), each with one metadata entry
+  const chd = (tag) => { const b = Buffer.alloc(256); b.write('MComprHD', 0, 'latin1'); b.writeUInt32BE(124, 8); b.writeUInt32BE(5, 12); b.writeBigUInt64BE(124n, 48); b.write(tag, 124, 'latin1'); return b; };
+  mk('Discs/Shenmue (USA).chd', chd('CHGD'));
+  mk('Discs/God of War II (USA).chd', chd('DVD '));
+  assert.equal(rom.chdKind(path.join(work, 'Discs/Shenmue (USA).chd')), 'gd');
+
+  const lib = new Library({ dataDir: path.join(work, 'data'), catalogFile: path.join(__dirname, '..', 'catalog', 'games.json'), platform: 'linux' });
+  await lib.load();
+  lib.state.settings.libraryDir = path.join(work, 'Cartridge');
+  const report = await lib.addRoms([work]);
+  assert.equal(report.filter((r) => r.status === 'error').length, 0, JSON.stringify(report.filter((r) => r.status === 'error')));
+  const sys = (name) => (lib.state.roms.find((r) => r.internalName === name) || {}).system;
+  assert.equal(sys('Bloodborne'), 'ps4');
+  assert.equal(lib.state.roms.find((r) => r.internalName === 'Bloodborne').serial, 'CUSA00900');
+  assert.equal(sys('God of War'), 'ps4');
+  assert.equal(sys('Persona 4 Golden'), 'vita');
+  assert.equal(sys('Astro Bot'), 'ps5');
+  assert.equal(sys('Halo 5: Guardians'), 'xone');
+  assert.equal(sys('Starfield'), 'xsx');
+  assert.equal(sys('Mario Kart World'), 'switch2');
+  assert.equal(sys('Journey'), 'ps3');
+  assert.equal(sys('Mario Kart 8'), 'wiiu');
+  assert.equal(lib.state.roms.find((r) => r.internalName === 'Mario Kart 8').serial, '0005000010145D00');
+  assert.equal(lib.state.roms.filter((r) => r.internalName === 'Mario Kart 8').length, 1, 'one game, not one per .app file');
+  assert.equal(sys('Homebrew Launcher'), 'wiiu');
+  assert.equal(sys('Shenmue'), 'dreamcast');
+  assert.equal(sys('God of War II'), 'ps2');
+  for (const id of ['ps4', 'ps5', 'xone', 'xsx', 'switch2']) assert.ok(lib.systems[id], `${id} is in the catalog`);
 });

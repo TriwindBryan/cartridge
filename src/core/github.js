@@ -73,6 +73,9 @@ function pickAsset(assets, platform = process.platform, assetMatch, arch = proce
     if (words.avoid.test(a.name)) s -= 8;
     if (/(installer|setup)/i.test(a.name)) s -= 1;
     if (platform === 'win32' && /(x86|i686|win32)(?!_64)/i.test(a.name) && !/x86_64|x64|win64/i.test(a.name)) s -= 2;
+    // On a Mac or Linux, a download that doesn't say which system it's for is almost always the Windows build
+    // (zelda3_v0.3.zip was), so only count it when its name names this system or it's a Mac disk image / AppImage
+    if (platform !== 'win32' && !words.want.test(a.name) && !/\.(dmg|appimage)$/i.test(a.name)) s -= 20;
     if (platform === 'darwin') {
       // Apple Silicon runs Intel builds too (Rosetta), but a native or universal build is better, and the reverse doesn't work
       const armOnly = /(arm64|aarch64|apple[-_ ]?silicon|\bm1\b)/i.test(a.name) && !/universal/i.test(a.name);

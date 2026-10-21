@@ -15,7 +15,7 @@ The rest of this page is about building Cartridge yourself.
 1. Install Node.js once: `winget install OpenJS.NodeJS.LTS` (or the LTS installer from nodejs.org).
 2. Double-click **Start Cartridge.bat**. The first start downloads Electron (about a minute).
 
-To get a single portable `Cartridge-1.30.0-Portable.exe` you can share or keep anywhere, double-click **Build Portable EXE.bat**. The file appears in `dist\`.
+To get a single portable `Cartridge-1.45.0-Portable.exe` you can share or keep anywhere, double-click **Build Portable EXE.bat**. The file appears in `dist\`.
 
 ## Mac builds
 
@@ -25,7 +25,7 @@ On a Mac, Cartridge picks each port's Mac download (preferring Apple Silicon or 
 
 ## Make an installer (.msi)
 
-Double-click **Build Installer (MSI).bat**. It runs the tests and builds `dist\Cartridge-1.30.0-Setup.msi` (the first build downloads Electron and the WiX installer tools, so it takes a few minutes). The installer:
+Double-click **Build Installer (MSI).bat**. It runs the tests and builds `dist\Cartridge-1.45.0-Setup.msi` (the first build downloads Electron and the WiX installer tools, so it takes a few minutes). The installer:
 
 - asks whether to install just for you (no admin rights needed) or for everyone on the PC, and where;
 - adds Cartridge to the Start menu and the desktop, with the cartridge icon;
@@ -43,7 +43,7 @@ Windows may warn that the installer is from an unknown publisher, because it isn
 - checks the SHA-1 against the No-Intro database (downloaded from libretro-database and cached for 30 days) so it knows the exact title, region and revision
 - falls back to the ROM header for dumps that aren't in No-Intro, such as the Dinosaur Planet prototype
 - reads the disc ID from GameCube/Wii `.iso` and `.rvz` images
-- keeps a tidy copy in `%USERPROFILE%\Cartridge\ROMs` (disc images stay where they are)
+- leaves your ROMs where they are: it remembers each file (or its place inside a zip) and never copies your collection. Only when a game needs a different file (a .v64 converted to .z64, a header removed, a ROM unpacked from a zip) does it make one copy, for that game's ROM, in `Cartridge/ROMs/Converted`
 
 Every game has a **ROM slot**, with a **How do I get this ROM?** link. It opens a short guide for that console on dumping a game you own (with links to dumping.guide and the official homebrew/emulator guides), the exact versions the port accepts with their SHA-1 fingerprints, and a link to find the original cartridge or disc on eBay. The guides live in `catalog/dumping.json`.
 
@@ -65,17 +65,17 @@ Cartridge recognises games for every major console, loose or inside .zip/.7z:
 
 | Maker | Systems and file types |
 |---|---|
-| Nintendo | NES (.nes), Famicom Disk System (.fds), SNES (.sfc .smc), Virtual Boy (.vb), N64 (.z64 .n64 .v64), 64DD (.ndd), Game Boy (.gb), Game Boy Color (.gbc), GBA (.gba), Pokémon mini (.min), DS (.nds), 3DS (.3ds .cia .cxi), GameCube and Wii (.iso .rvz .gcm .ciso .gcz .wbfs), Wii U (.wua .wud .wux, or a dumped game folder), Switch (.nsp .xci .nsz .xcz) |
-| Sega | SG-1000 (.sg), Master System (.sms), Game Gear (.gg), Genesis / Mega Drive (.md .gen .bin), 32X (.32x), Sega CD, Saturn (.cue + .bin, .chd, .iso), Dreamcast (.gdi .cdi .chd) |
-| Sony | PlayStation (.cue + .bin, .chd, .m3u, .pbp, .iso), PS2 (.iso .chd), PS3 (dumped game folder, .iso, .pkg), PSP (.iso .cso), Vita (dumped game folder, .vpk) |
-| Microsoft | Xbox and Xbox 360 (.iso, or an extracted folder with default.xbe / default.xex) |
+| Nintendo | NES (.nes), Famicom Disk System (.fds), SNES (.sfc .smc), Virtual Boy (.vb), N64 (.z64 .n64 .v64), 64DD (.ndd), Game Boy (.gb), Game Boy Color (.gbc), GBA (.gba), Pokémon mini (.min), DS (.nds), 3DS (.3ds .cia .cxi, and Azahar's .zcci .zcxi .z3dsx .zcia), GameCube and Wii (.iso .rvz .gcm .ciso .gcz .wbfs), Wii U (.wua .wud .wux .rpx .wuhb, a dumped game folder, or a NUS folder with title.tmd + .app files), Switch (.nsp .xci .nsz .xcz), Switch 2 (the same file types, in a folder named Switch 2) |
+| Sega | SG-1000 (.sg), Master System (.sms), Game Gear (.gg), Genesis / Mega Drive (.md .gen .bin), 32X (.32x), Sega CD, Saturn (.cue + .bin, .chd, .iso), Dreamcast (.gdi .cdi .cue + .bin, .chd: CHDs holding a GD-ROM are recognised by their contents) |
+| Sony | PlayStation (.cue + .bin, .chd, .m3u, .pbp, .iso), PS2 (.iso .chd), PS3 (dumped game folder, PSN game folder with USRDIR, .iso, .pkg), PSP (.iso .cso), Vita (dumped game folder, .vpk), PS4 (.pkg, or a dumped game folder), PS5 (dumped game folder with sce_sys/param.json) |
+| Microsoft | Xbox and Xbox 360 (.iso, or an extracted folder with default.xbe / default.xex; Xbox 360 Games on Demand and Xbox Live Arcade packages), Xbox One and Xbox Series X\|S (dumped game folder with MicrosoftGame.config; Series games in a folder named Xbox Series) |
 | Arcade | Capcom CPS-1, CPS-2, CPS-3 and ZN; Neo Geo (MVS / AES); Sega NAOMI, Atomiswave, System 16 / 18 / 24 / 32, Model 1 / 2 / 3 and ST-V; Namco System 1 / 2 / 11 / 12 / 22; Konami GX and System 573; Taito F3; IGS PGM; Cave; Psikyo; Toaplan; Irem; Midway; and about 4,700 more games on other boards (.zip or .7z sets) |
 | Others | PC Engine / TurboGrafx-16 (.pce), PC Engine CD, SuperGrafx (.sgx), Neo Geo CD, Neo Geo Pocket / Color (.ngp .ngc), WonderSwan / Color (.ws .wsc), Atari 2600 (.a26 .bin), 5200 (.a52), 7800 (.a78), Lynx (.lnx), Jaguar (.j64), 3DO, ColecoVision (.col), Intellivision (.int), Vectrex (.vec), MSX (.mx1 .mx2) |
 
 How each kind is handled:
 
-- **Cartridge games** are checked against the No-Intro database for that console, so the exact title, region and revision are known, and a tidy copy goes into the ROM library. Dump headers No-Intro leaves out (NES, Famicom Disk System, PC Engine, Lynx, Atari 7800, SNES copier headers) are handled either way.
-- **Discs and modern games** (PlayStation, Saturn, Dreamcast, Wii U, Switch, 3DS, Xbox and so on) are too big to copy, so they stay where they are and Cartridge remembers the path. They are matched to games by name, plus the serial where the files carry one: the Switch title ID from the file name, the 3DS product code, the Wii U product code from meta.xml, and the PS3/Vita title ID from PARAM.SFO.
+- **Cartridge games** are checked against the No-Intro database for that console, so the exact title, region and revision are known. The file itself stays where it is. Dump headers No-Intro leaves out (NES, Famicom Disk System, PC Engine, Lynx, Atari 7800, SNES copier headers) are handled either way.
+- **Discs and modern games** (PlayStation, Saturn, Dreamcast, Wii U, Switch, 3DS, Xbox and so on) are too big to copy, so they stay where they are and Cartridge remembers the path. They are matched to games by name, plus the serial where the files carry one: the Switch title ID from the file name, the 3DS product code, the Wii U product code from meta.xml, the PS3/Vita/PS4 title ID from PARAM.SFO (which also tells a PS4 folder from a Vita one), the PS5 title from param.json, the Xbox One/Series name from MicrosoftGame.config, and the Xbox 360 name and title ID from Games on Demand packages.
 - **Shared file types** (.bin, .iso, .cue, .chd) are used by several consoles. Cartridge looks inside the file for the console's own signature (Saturn, Sega CD, Dreamcast, 3DO, PC Engine CD, PlayStation 1/2/3, PSP, GameCube, Wii, Xbox). When that can't decide (.chd files are compressed), the folder name does: anything inside a folder called "Saturn", "PS2", "Sony - PlayStation 2" and so on goes to that console.
 - **Dumped game folders** (PS3, Vita, Wii U, Xbox) count as one game, not hundreds of loose files.
 - A .cue and its .bin tracks count as one disc, and the .cue is what gets handed to the game.
@@ -134,7 +134,7 @@ The Games screen has two layouts, switched with **Rows / Grid** in the bar above
 **The filter bar** sits above the games in two lines:
 
 - First line, what to show: **All · Decomp · Recomp · Remake · ROMs**, each with a count, plus **↻** on the right to check every game for updates.
-- Second line, left to right: **Layout** (Rows / Grid), **Sort**, **Console** and **Status** (Any, Installed, ROM ready, No ROM loaded) dropdowns. A dropdown that's changed from its default turns gold, and **Reset** puts them all back.
+- Second line, left to right: **Layout** (Rows / Grid), **Sort**, **Console** and **Status** (Any, Works on this PC/Mac, Installed, ROM ready, No ROM loaded) dropdowns. A dropdown that's changed from its default turns gold, and **Reset** puts them all back.
 - When the info panel is open, the games move over to make room, so nothing is hidden behind it.
 
 - **All** (the default) shows every game together, all types mixed, so you see everything you have.
@@ -173,7 +173,11 @@ The launcher ignores the controller while a game has focus, and comes back to th
 `catalog/games.json` lists 27 projects: 25 installable ports plus 2 source-only reimplementations shown for reference. Each entry has the original system, year, developer and publisher, who made the decomp or recomp, who built the PC port, and how the game takes its ROM.
 
 Add your own games in three ways:
-- **Find more** lists 180+ decomp, recomp and remake ports for N64, SNES, NES, Game Boy, GBA, DS, GameCube, Wii, Genesis, PS1, PS2, PSP, Xbox 360 and PC, from the community catalog at github.com/tgeorgiadis/quiver-community-app-catalog (the same list Quiver Launcher uses, refreshed daily). Filter by console or type and click **+ Add**. Anything brand new can be found with the GitHub search at the bottom of the page.
+- **Find more** lists hundreds of decomp, recomp and remake ports for N64, SNES, NES, Game Boy, GBA, DS, 3DS, GameCube, Wii, Wii U, Switch, Genesis, Dreamcast, PS1, PS2, PS3, PS4, PSP, Xbox, Xbox 360, Xbox One and PC. It merges two lists, refreshed daily: the community catalog at github.com/tgeorgiadis/quiver-community-app-catalog (the one Quiver Launcher uses) and [Recompendium](https://recompendium.com) (data under CC BY-SA 4.0), plus a few newer ports Cartridge adds itself. Each card shows the port's status; hover for its description and what it needs. Filter by console or type and click **+ Add**. Anything brand new can be found with the GitHub search at the bottom of the page.
+- Each Find more card says what it takes: **Download**, **Build it yourself** or **Needs game files**, with a filter for each. For ports you build yourself, click **Add your copy** on the game's page and pick its .exe or a .bat that starts it.
+- The **Help** tab explains every part of Cartridge in a few steps per topic, and the small **?** buttons open the matching topic where you are.
+- **Check my setup** (in Help) finds full drives, missing ROM folders and files, broken installs and leftovers, with one-click fixes that never delete your own files.
+- **Favorites**, a **Recently played** row, **NEW** badges on Find more, release notes before each update, and **Settings → Colors** with eight themes or your own custom colors.
 - **Settings → Extra catalog URL** loads a `games.json` from anywhere, such as a raw GitHub link, so you can share a list.
 - Edit `catalog/games.json` directly. Useful fields:
 

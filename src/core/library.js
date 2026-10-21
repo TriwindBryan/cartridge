@@ -19,6 +19,7 @@ const covers = require('./covers');
 const arcade = require('./arcade');
 const crypto = require('crypto');
 const update = require('./update');
+const disk = require('./disk');
 
 const DAT_BASE = 'https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/';
 const RELEASE_TTL = 6 * 60 * 60 * 1000;
@@ -57,6 +58,9 @@ class Library extends EventEmitter {
       const saved = JSON.parse(await fsp.readFile(this.statePath, 'utf8'));
       hadState = true;
       this.state = { ...this.state, ...saved, settings: { ...this.state.settings, ...(saved.settings || {}) } };
+      // which download fits depends on Cartridge's version and the computer, so re-check them when either changes
+      const releasesFor = `${this.version}|${this.platform}|${process.arch}`;
+      if (this.state.releasesFor !== releasesFor) { this.state.releases = {}; this.state.releasesFor = releasesFor; }
     } catch { /* first run */ }
     const base = JSON.parse(await fsp.readFile(this.catalogFile, 'utf8'));
     this.systems = base.systems;
@@ -115,6 +119,7 @@ class Library extends EventEmitter {
     const bySystem = new Map();
     const arcadeRoms = [];
     for (const r of roms) {
+      if (r.missing) continue; // its file is gone: it can't unlock anything
       if (!bySystem.has(r.system)) bySystem.set(r.system, []);
       bySystem.get(r.system).push(r);
       if (r.arcade) arcadeRoms.push(r);
@@ -134,6 +139,7 @@ class Library extends EventEmitter {
       return {
         ...g,
         installed,
+        favorite: !!(this.state.favorites || {})[g.id],
         inSteam: !!(this.state.steam || {})[g.id],
         cover: coverOf(`game:${g.id}`),
         customCover: ((this.state.covers || {})[`game:${g.id}`] || {}).source === 'custom',
@@ -144,11 +150,11 @@ class Library extends EventEmitter {
         job: Library.publicJob(this.jobs.get(g.id)),
         release: latest,
         releaseError: rel && rel.error ? rel.error : null,
-        updateAvailable: !!(installed && latest && latest.tag && latest.tag !== installed.tag),
+        updateAvailable: !!(installed && !installed.manual && latest && latest.tag && latest.tag !== installed.tag),
         romMatch: match ? { romId: match.rom.id, level: match.level, reason: match.reason, label: match.rom.datName || match.rom.originalName, file: match.rom.file } : null,
       };
     });
-    return { systems: this.systems, games, roms, scanning: !!this.scanning, settings: { ...this.state.settings, githubToken: this.state.settings.githubToken ? '••••' : '', steamGridKey: this.state.settings.steamGridKey ? '••••' : '' }, dirs: this.dirs, platform: this.platform, version: this.version || '', links: this.links || {}, appUpdate: (this.state.appUpdate || {}).data || null, changelog: path.join(path.dirname(path.dirname(this.catalogFile)), 'CHANGELOG.md') };
+    return { systems: this.systems, games, roms, scanning: !!this.scanning, settings: { ...this.state.settings, githubToken: this.state.settings.githubToken ? '••••' : '', steamGridKey: this.state.settings.steamGridKey ? '••••' : '' }, dirs: this.dirs, platform: this.platform, version: this.version || '', label: (this.links || {}).label || '', links: this.links || {}, appUpdate: (this.state.appUpdate || {}).data || null, changelog: path.join(path.dirname(path.dirname(this.catalogFile)), 'CHANGELOG.md') };
   }
 
   emitChange() { this.emit('change'); }
@@ -224,13 +230,18 @@ class Library extends EventEmitter {
    * With skipKnown, files already checked in an earlier scan (same size and date) are skipped,
    * so rescanning a big ROM folder at startup is quick.
    */
-  async collectRomFiles(paths, tmpDirs, { skipKnown = false } = {}) {
+  async collectRomFiles(paths, tmpDirs, { skipKnown = false, onArchive = null } = {}) {
     const out = [];
     const index = this.state.scanIndex || (this.state.scanIndex = {});
     const ownDirs = [this.dirs.roms, this.dirs.games, this.dirs.downloads].map((d) => path.resolve(d).toLowerCase());
     const SKIP_DIRS = /^(\$recycle\.bin|system volume information|windows|program files( \(x86\))?|programdata|appdata|node_modules|\.git)$/i;
     const stamp = (st) => `${st.size}:${Math.round(st.mtimeMs)}`;
-    const visit = async (p, depth, archive) => {
+    // a .cue already covers its .bin tracks, so don't list those separately
+    const dropTracks = (list) => {
+      const tracks = new Set(list.filter((f) => /\.cue$/i.test(f.file)).flatMap((f) => rom.cueTracks(f.file)).map((t) => path.resolve(t).toLowerCase()));
+      return tracks.size ? list.filter((f) => !tracks.has(path.resolve(f.file).toLowerCase())) : list;
+    };
+    const visit = async (p, depth, archive, into = out) => {
       let st;
       try { st = await fsp.stat(p); } catch { return; }
       if (st.isDirectory()) {
@@ -246,7 +257,7 @@ class Library extends EventEmitter {
           out.push({ file: marker, shown: path.basename(p), indexKey: marker, stamp: stamp(mst), fromArchive: false });
           return;
         }
-        for (const e of entries) await visit(path.join(p, e), depth + 1, archive);
+        for (const e of entries) await visit(path.join(p, e), depth + 1, archive, into);
         return;
       }
       const arc = !archive ? arcade.classify(this.arcadeDb, p) : null;
@@ -257,25 +268,48 @@ class Library extends EventEmitter {
         out.push({ file: p, shown: path.basename(p), indexKey: p, stamp: stamp(st), fromArchive: false, arcade: true });
         return;
       }
-      if (rom.systemForExtension(p) && !/^(param\.sfo|meta\.xml)$/i.test(path.basename(p))) {
+      if (rom.systemForExtension(p) && !/^(param\.sfo|param\.json|meta\.xml|microsoftgame\.config|appxmanifest\.xml)$/i.test(path.basename(p)) && !/\.tmd$/i.test(p)) {
         if (!archive && skipKnown && index[p] === stamp(st)) return;
-        out.push({ file: p, shown: archive ? `${path.basename(archive.file)} › ${path.basename(p)}` : path.basename(p), indexKey: archive ? archive.file : p, stamp: archive ? archive.stamp : stamp(st), fromArchive: !!archive });
-      } else if (!archive && /\.(zip|7z)$/i.test(p) && st.size < 256 * 1024 * 1024) {
+        into.push({ file: p, shown: archive ? `${path.basename(archive.file)} › ${path.basename(p)}` : path.basename(p), indexKey: archive ? archive.file : p, stamp: archive ? archive.stamp : stamp(st), fromArchive: !!archive,
+          ...(archive ? { archiveFile: archive.file, member: path.relative(archive.root, p).split(path.sep).join('/') } : {}) });
+      } else if (!archive && /\.(zip|7z)$/i.test(p) && st.size >= (this.bigArchiveBytes || 256 * 1024 * 1024)) {
+        // a big archive (a 3DS, Switch or disc game): look at the names inside instead of unpacking gigabytes
         if (skipKnown && index[p] === stamp(st)) return;
-        const tmp = await fsp.mkdtemp(path.join(os.tmpdir(), 'cartridge-rom-'));
-        tmpDirs.push(tmp);
         try {
-          await inst.extract(p, tmp);
           const before = out.length;
-          await visit(tmp, depth + 1, { file: p, stamp: stamp(st) });
-          if (out.length === before) index[p] = stamp(st); // a zip with no ROMs: remember it so we don't reopen it
-        } catch { index[p] = stamp(st); /* not an archive we can read */ }
+          for (const m of await inst.listArchive(p)) {
+            const sys = rom.systemForExtension(m.name);
+            if (!sys || !rom.NAME_ONLY.has(sys) || rom.SHARED_EXT_SET.has(path.extname(m.name).toLowerCase())) continue;
+            out.push({ file: p, shown: `${path.basename(p)} › ${path.basename(m.name)}`, indexKey: p, stamp: stamp(st), fromArchive: true, listed: { system: sys, size: m.size },
+              archiveFile: p, member: m.name.split(path.sep).join('/') });
+          }
+          if (out.length === before) index[p] = stamp(st);
+        } catch { index[p] = stamp(st); }
+      } else if (!archive && /\.(zip|7z)$/i.test(p)) {
+        if (skipKnown && index[p] === stamp(st)) return;
+        // unpacked into a temporary folder, checked, and (with onArchive) deleted again before the next one,
+        // so a folder of thousands of zips never needs more than one unpacked zip's worth of space
+        await disk.ensureSpace(os.tmpdir(), st.size * 8 + 256e6);
+        const tmp = await fsp.mkdtemp(path.join(os.tmpdir(), 'cartridge-rom-'));
+        if (!onArchive) tmpDirs.push(tmp);
+        try {
+          try { await inst.extract(p, tmp); } catch (e) {
+            if (e.code === 'ENOSPC' || /no space|disk full|not enough space/i.test(e.message)) throw disk.friendly(Object.assign(e, { code: 'ENOSPC' }), tmp);
+            index[p] = stamp(st); // not an archive we can read
+            return;
+          }
+          const inner = [];
+          await visit(tmp, depth + 1, { file: p, stamp: stamp(st), root: tmp }, inner);
+          if (!inner.length) index[p] = stamp(st); // a zip with no ROMs: remember it so we don't reopen it
+          else if (onArchive) await onArchive(dropTracks(inner));
+          else out.push(...inner);
+        } finally {
+          if (onArchive) await fsp.rm(tmp, { recursive: true, force: true }).catch(() => {});
+        }
       }
     };
     for (const p of paths) await visit(p, 0, null);
-    // a .cue already covers its .bin tracks, so don't list those separately
-    const tracks = new Set(out.filter((f) => /\.cue$/i.test(f.file)).flatMap((f) => rom.cueTracks(f.file)).map((t) => path.resolve(t).toLowerCase()));
-    return tracks.size ? out.filter((f) => !tracks.has(path.resolve(f.file).toLowerCase())) : out;
+    return dropTracks(out);
   }
 
   /** Add ROM files / folders / zips. Returns a per-file report for the UI. */
@@ -283,40 +317,49 @@ class Library extends EventEmitter {
     const tmpDirs = [];
     const report = [];
     try {
-      const files = await this.collectRomFiles(paths, tmpDirs, opts);
-      const index = this.state.scanIndex;
+      const index = this.state.scanIndex || (this.state.scanIndex = {});
       const remember = (f) => { if (f.indexKey) index[f.indexKey] = f.stamp; };
-      await fsp.mkdir(this.dirs.roms, { recursive: true });
-      for (const f of files) {
+      const handle = async (f) => {
         const { file, shown } = f;
         try {
-          const info = f.arcade ? arcade.inspect(this.arcadeDb, file) : await (this.hooks.inspectRom || rom.inspectRom)(file);
+          const info = f.arcade ? arcade.inspect(this.arcadeDb, file)
+            // inside a big archive: known by the file name only (nothing unpacked)
+            : f.listed ? { system: f.listed.system, size: f.listed.size, sha1: null, format: path.extname(f.member).slice(1).toLowerCase(), byName: true, internalName: rom.nameFromFile(f.member), serial: '' }
+            : await (this.hooks.inspectRom || rom.inspectRom)(file);
           const dat = await this.loadDat(info.system);
           let datHit = dat && info.sha1 ? dat.bySha1.get(info.sha1) : null;
           if (!datHit && dat && info.alt && dat.bySha1.get(info.alt.sha1)) {
             // this database lists the dump with its header kept, so keep it too
             datHit = dat.bySha1.get(info.alt.sha1);
-            Object.assign(info, { data: info.alt.data, sha1: info.alt.sha1, size: info.alt.data.length });
+            Object.assign(info, { data: info.alt.data, sha1: info.alt.sha1, size: info.alt.data.length, converted: false });
           }
           const id = info.arcade ? `arcade-${info.arcade.set}` : info.sha1 || `${info.system}-${info.serial || ''}-${info.size}-${(info.internalName || path.basename(file)).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
-          if (this.state.roms.some((r) => r.id === id)) { remember(f); report.push({ file: shown, status: 'duplicate', id, system: info.system, name: datHit ? datHit.name : info.internalName }); continue; }
-
-          let stored = file;
-          if (!info.data && f.fromArchive) {
-            // a disc pulled out of a zip: keep a copy (and its .bin tracks) since the temporary folder is deleted
-            const dest = path.join(this.dirs.roms, path.basename(file, path.extname(file)).replace(/[<>:"/\\|?*]/g, '_'));
-            await fsp.mkdir(dest, { recursive: true });
-            for (const part of [file, ...(info.tracks || [])]) if (fs.existsSync(part)) await fsp.copyFile(part, path.join(dest, path.basename(part)));
-            stored = path.join(dest, path.basename(file));
-          }
-          if (info.data) {
-            const ext = info.storeExt || path.extname(file);
-            const base = (datHit ? datHit.name : path.basename(file, path.extname(file))).replace(/[<>:"/\\|?*]/g, '_');
-            stored = path.join(this.dirs.roms, base + ext);
-            await fsp.writeFile(stored, info.data);
+          // Cartridge never copies ROMs: it remembers where they are (inside a zip if need be),
+          // and only makes a converted copy later, for a game that needs one (see romPath)
+          const where = {
+            file: f.fromArchive ? f.archiveFile : file,
+            ...(f.fromArchive ? { member: f.member } : {}),
+            ...(info.converted ? { convert: true } : {}),
+            ...(info.storeExt ? { storeExt: info.storeExt } : {}),
+          };
+          const existing = this.state.roms.find((r) => r.id === id);
+          if (existing) {
+            // an older Cartridge kept a copy of this ROM, or the file moved: point at the file found now
+            // (a copy is deleted; the player's own files never are)
+            if ((this.isRomCopy(existing.file) || !fs.existsSync(existing.file)) && !this.isRomCopy(where.file) && path.resolve(existing.file) !== path.resolve(where.file)) {
+              const old = existing.file;
+              delete existing.member; delete existing.convert; delete existing.missing;
+              Object.assign(existing, where);
+              const freed = await this.deleteRomCopy(old);
+              this.romCopiesFreed = (this.romCopiesFreed || 0) + freed;
+              remember(f);
+              report.push({ file: shown, status: 'relinked', id, freed });
+              return;
+            }
+            remember(f); report.push({ file: shown, status: 'duplicate', id, system: info.system, name: datHit ? datHit.name : info.internalName }); return;
           }
           const entry = {
-            id, file: stored, originalName: path.basename(file), system: info.system, sha1: info.sha1,
+            id, ...where, originalName: path.basename(file), system: info.system, sha1: info.sha1,
             serial: (datHit && datHit.serial) || info.serial, internalName: info.internalName,
             datName: datHit ? datHit.name : null, size: info.size, format: info.format, addedAt: Date.now(), byName: !!info.byName,
             ...(info.arcade ? { arcade: info.arcade } : {}),
@@ -326,15 +369,132 @@ class Library extends EventEmitter {
           const unlocks = this.games.filter((g) => romdb.matchRomToGame(entry, g).level).map((g) => g.port);
           report.push({ file: shown, status: 'added', id, system: info.system, name: entry.datName || entry.internalName || entry.originalName, verified: !!datHit, unlocks });
         } catch (e) {
+          if (e.code === 'ENOSPC') throw disk.friendly(e, os.tmpdir()); // a full drive: stop, and check this file again next time
           remember(f); // don't re-check a bad file on every startup
           report.push({ file: shown, status: 'error', error: e.message });
         }
-      }
+      };
+      // ROMs inside zips are checked as each zip is unpacked (its temporary folder is gone before the next one);
+      // loose files after that
+      const files = await this.collectRomFiles(paths, tmpDirs, { ...opts, onArchive: async (list) => { for (const f of list) await handle(f); } });
+      for (const f of files) await handle(f);
       await this.save();
       this.emitChange();
       return report;
     } finally {
       for (const t of tmpDirs) fsp.rm(t, { recursive: true, force: true }).catch(() => {});
+    }
+  }
+
+  /** Free space where Cartridge writes (library, temporary files), for warnings and Check my setup. */
+  async diskStatus() {
+    const places = [['library', this.dirs.root], ['temp', os.tmpdir()]];
+    const out = [];
+    const seen = new Set();
+    for (const [what, dir] of places) {
+      const free = await disk.freeBytes(dir);
+      const drive = disk.driveName(dir);
+      if (seen.has(drive) && drive !== 'drive') continue;
+      seen.add(drive);
+      out.push({ what, dir, drive, free, low: free != null && free < 5 * disk.GB });
+    }
+    return out;
+  }
+
+  // ---------- Check my setup ----------
+  /** Bytes used by a folder (0 when it isn't there). */
+  async folderBytes(dir) {
+    try { return (await inst.walk(dir)).reduce((n, f) => n + (f.size || 0), 0); } catch { return 0; }
+  }
+
+  /**
+   * Everything that can quietly go wrong, each with a plain explanation and (where Cartridge can) a one-click fix.
+   * Returns { ok: [...things that are fine], issues: [{ id, level: 'bad'|'warn', title, detail, fix?: { id, label } }] }
+   */
+  async checkSetup() {
+    const issues = [];
+    const ok = [];
+    const fmt = disk.fmt;
+    // 1. free space
+    for (const d of await this.diskStatus()) {
+      if (d.free == null) continue;
+      if (d.free < 2 * disk.GB) issues.push({ id: `space-${d.drive}`, level: 'bad', title: `Your ${d.drive} is almost full`, detail: `Only ${fmt(d.free)} free. Installs, ROM scans and save backups can fail. Free up space on it (the fixes below may help).` });
+      else if (d.low) issues.push({ id: `space-${d.drive}`, level: 'warn', title: `Your ${d.drive} is getting full`, detail: `${fmt(d.free)} free. Big games and scans need a few GB.` });
+      else ok.push(`${fmt(d.free)} free on your ${d.drive}`);
+    }
+    // 2. leftovers Cartridge can clear: downloads, temporary files, unpacked ROMs for games, old copies
+    const busy = this.jobs.size > 0;
+    const dl = busy ? 0 : await this.folderBytes(this.dirs.downloads);
+    if (dl > 50e6) issues.push({ id: 'downloads', level: 'warn', title: `${fmt(dl)} of leftover downloads`, detail: 'Downloads from installs that were cancelled or failed. They are safe to delete.', fix: { id: 'clear-downloads', label: 'Delete leftover downloads' } });
+    let tmpBytes = 0;
+    if (!this.scanning) {
+      try {
+        for (const d of await fsp.readdir(os.tmpdir())) if (/^cartridge-(rom|dmg)-/.test(d)) tmpBytes += await this.folderBytes(path.join(os.tmpdir(), d));
+      } catch { /* no temp folder access */ }
+    }
+    if (tmpBytes > 10e6) issues.push({ id: 'temp', level: 'warn', title: `${fmt(tmpBytes)} of temporary files`, detail: 'Left behind when Cartridge was closed in the middle of a ROM scan. Safe to delete.', fix: { id: 'clear-temp', label: 'Delete temporary files' } });
+    const copies = await this.romCopies();
+    if (copies.count) issues.push({ id: 'copies', level: copies.bytes > disk.GB ? 'warn' : 'warn', title: `${copies.count.toLocaleString()} old ROM copies${copies.bytes ? ` (${fmt(copies.bytes)})` : ''}`, detail: 'Older versions of Cartridge copied every ROM into its own folder. Cartridge now uses your files where they are. Rescan first so ROMs in your watched folders point at your originals; this removes the rest of the copies from the list and the disk.', fix: { id: 'remove-copies', label: 'Remove old copies' } });
+    const conv = await this.folderBytes(path.join(this.dirs.roms, 'Converted'));
+    if (conv > 2 * disk.GB) issues.push({ id: 'converted', level: 'warn', title: `${fmt(conv)} of converted ROMs`, detail: 'Copies made for games that need a different format (or a ROM out of a zip). They are made again the next time a game needs one.', fix: { id: 'clear-converted', label: 'Delete converted copies' } });
+    // 3. ROM folders that can't be reached
+    const reach = (f) => Promise.race([fsp.stat(f).then(() => true, () => false), new Promise((r) => setTimeout(() => r(false), 8000))]);
+    const folders = this.state.settings.romFolders || [];
+    const reachable = await Promise.all(folders.map(reach));
+    folders.forEach((f, i) => {
+      if (!reachable[i]) issues.push({ id: `folder-${f}`, level: 'warn', title: `ROM folder not found: ${f}`, detail: "It's on a drive that isn't connected, or it was moved or renamed. Connect the drive, or stop watching it if it's gone for good.", fix: { id: `unwatch:${f}`, label: 'Stop watching it' } });
+    });
+    if (folders.length && reachable.every(Boolean)) ok.push(`All ${folders.length} ROM folder${folders.length > 1 ? 's' : ''} found`);
+    if (!folders.length) issues.push({ id: 'no-folders', level: 'warn', title: 'No ROM folder yet', detail: 'Add the folder where you keep your ROMs (ROM Folder at the top), and Cartridge finds new ones by itself every time it starts.' });
+    // 4. ROMs whose file is gone
+    const missing = await this.markMissing();
+    if (missing) issues.push({ id: 'missing', level: 'warn', title: `${missing.toLocaleString()} ROM${missing > 1 ? 's' : ''} with a missing file`, detail: "Moved, deleted, or on a drive that isn't connected. If you moved them, add the new folder and they're found again. Otherwise, take them off the list (no files are deleted).", fix: { id: 'forget-missing', label: 'Remove missing from the list' } });
+    else ok.push(`All ${this.state.roms.length.toLocaleString()} ROMs found`);
+    // 5. installed games whose files are gone
+    let broken = 0;
+    for (const [id, i] of Object.entries(this.state.installed)) {
+      if (fs.existsSync(i.exe)) continue;
+      broken++;
+      const g = this.game(id);
+      const name = g ? g.port : id;
+      issues.push({ id: `install-${id}`, level: 'bad', title: `${name}: its files are missing`, detail: i.manual ? `Your own copy isn't at ${i.exe} any more. Pick where it is now, or take it off the list.` : 'The game folder was moved or deleted. Reinstall it, or take it off the list (your save backups are kept).', fix: { id: `forget-install:${id}`, label: 'Take it off the list' } });
+    }
+    if (!broken && Object.keys(this.state.installed).length) ok.push(`All ${Object.keys(this.state.installed).length} installed games found`);
+    if (missing) await this.save();
+    this.emitChange();
+    return { ok, issues };
+  }
+
+  /** Run one of Check my setup's fixes. Only ever deletes Cartridge's own leftovers. */
+  async fixSetup(fixId) {
+    const [what, arg] = [fixId.split(':')[0], fixId.slice(fixId.indexOf(':') + 1)];
+    switch (what) {
+      case 'clear-downloads':
+        if (this.jobs.size) throw new Error('Wait for the install that is running to finish.');
+        await fsp.rm(this.dirs.downloads, { recursive: true, force: true });
+        await fsp.mkdir(this.dirs.downloads, { recursive: true });
+        return true;
+      case 'clear-temp':
+        if (this.scanning) throw new Error('Wait for the ROM scan to finish.');
+        for (const d of await fsp.readdir(os.tmpdir())) if (/^cartridge-(rom|dmg)-/.test(d)) await fsp.rm(path.join(os.tmpdir(), d), { recursive: true, force: true }).catch(() => {});
+        return true;
+      case 'clear-converted':
+        await fsp.rm(path.join(this.dirs.roms, 'Converted'), { recursive: true, force: true });
+        return true;
+      case 'remove-copies':
+        return this.removeRomCopies();
+      case 'forget-missing':
+        return this.forgetMissing();
+      case 'unwatch':
+        return this.removeRomFolder(arg);
+      case 'forget-install': {
+        if (!this.state.installed[arg]) return false;
+        delete this.state.installed[arg]; // its folder is already gone; backups stay
+        await this.save();
+        this.emitChange();
+        return true;
+      }
+      default: throw new Error('Unknown fix.');
     }
   }
 
@@ -346,6 +506,168 @@ class Library extends EventEmitter {
       await this.save();
     }
     return this.addRoms([dir], { skipKnown: true });
+  }
+
+  // ---------- ROM files: originals stay where they are ----------
+  /** Is this inside one of the folders you told Cartridge to watch? Those are your own files, always. */
+  inWatchedFolder(p) {
+    const f = path.resolve(p).toLowerCase();
+    return (this.state.settings.romFolders || []).some((d) => {
+      const root = path.resolve(d).toLowerCase();
+      return f === root || f.startsWith(root.endsWith(path.sep) ? root : root + path.sep);
+    });
+  }
+
+  /** Is this a copy Cartridge made in its own ROMs folder (older versions did, for every ROM)? */
+  isRomCopy(p) {
+    if (!p) return false;
+    const root = path.resolve(this.dirs.roms) + path.sep;
+    const f = path.resolve(p).toLowerCase();
+    if (!f.startsWith(root.toLowerCase()) || f.startsWith(path.join(root, 'Converted').toLowerCase() + path.sep)) return false;
+    return !this.inWatchedFolder(p); // someone keeping their own ROMs in there (and watching it): never a copy
+  }
+
+  /**
+   * Delete one old copy, and only that: the file itself, plus a disc's track files listed in its .cue, each only if
+   * it's a copy too. A folder is removed only once it's empty. Returns the bytes freed.
+   */
+  async deleteRomCopy(p) {
+    if (!this.isRomCopy(p)) return 0;
+    const files = [path.resolve(p)];
+    if (/\.cue$/i.test(p)) { try { files.push(...rom.cueTracks(p).map((t) => path.resolve(t))); } catch { /* no tracks listed */ } }
+    let bytes = 0;
+    for (const f of files) {
+      if (!this.isRomCopy(f)) continue;
+      try { const st = await fsp.stat(f); if (!st.isFile()) continue; bytes += st.size; } catch { continue; }
+      await fsp.rm(f, { force: true }).catch(() => {});
+    }
+    // an older version kept each disc in its own folder: tidy it away once nothing is left in it
+    const dir = path.dirname(path.resolve(p));
+    if (dir.toLowerCase() !== path.resolve(this.dirs.roms).toLowerCase() && this.isRomCopy(path.join(dir, 'x'))) {
+      try { if (!(await fsp.readdir(dir)).length) await fsp.rmdir(dir); } catch { /* not empty or gone */ }
+    }
+    return bytes;
+  }
+
+  // ---------- ROMs whose file is gone ----------
+  /** Look for each ROM's file and mark the ones that are gone (moved, deleted, or on a drive that's unplugged). */
+  async markMissing() {
+    const roms = this.state.roms;
+    let i = 0, missing = 0;
+    const exists = async (f) => { try { await fsp.access(f); return true; } catch { return false; } };
+    const worker = async () => {
+      while (i < roms.length) {
+        const r = roms[i++];
+        if (await exists(r.file)) delete r.missing; else { r.missing = true; missing++; }
+      }
+    };
+    await Promise.all(Array.from({ length: 16 }, worker));
+    return missing;
+  }
+
+  /**
+   * Forget missing ROMs. auto (after a scan): only ones that were in a watched folder that's there right now, so its
+   * files really are gone (an unplugged drive is left alone). Otherwise every missing ROM. Files are never touched.
+   */
+  async forgetMissing({ auto = false, reachable = null } = {}) {
+    const folders = (reachable || this.state.settings.romFolders || []).map((d) => path.resolve(d).toLowerCase());
+    const under = (f) => folders.some((d) => path.resolve(f).toLowerCase().startsWith(d.endsWith(path.sep) ? d : d + path.sep));
+    const gone = this.state.roms.filter((r) => r.missing && (!auto || under(r.file)));
+    if (!gone.length) return 0;
+    const ids = new Set(gone.map((r) => r.id));
+    this.state.roms = this.state.roms.filter((r) => !ids.has(r.id));
+    for (const [g, rid] of Object.entries(this.state.romOverride)) if (ids.has(rid)) delete this.state.romOverride[g];
+    // a forgotten ROM may still be somewhere in a watched folder under another name: the next scan looks at
+    // everything again so it comes back (after a scan, only the exact files that are gone are forgotten)
+    if (auto) for (const r of gone) delete (this.state.scanIndex || {})[r.file];
+    else this.state.scanIndex = {};
+    await this.save();
+    this.emitChange();
+    return gone.length;
+  }
+
+
+
+  /** Where the converted copy of a ROM lives, if it needs one. */
+  convertedPathOf(r) {
+    if (!r.member && !r.convert) return null;
+    const base = String(r.datName || path.basename(r.member || r.file, path.extname(r.member || r.file))).replace(/[<>:"/\\|?*]/g, '_');
+    if (r.member && !r.convert) return path.join(this.dirs.roms, 'Converted', `${base} (${r.id.slice(0, 8)})`, r.member);
+    return path.join(this.dirs.roms, 'Converted', base + (r.storeExt || path.extname(r.member || r.file)));
+  }
+
+  /**
+   * The file to hand to a game. Usually the user's own ROM, untouched. Only when the game needs something different
+   * (a .v64/.n64 that must be .z64, a header removed, or a ROM inside a zip) is one copy made, for that ROM only.
+   */
+  async romPath(r) {
+    const out = this.convertedPathOf(r);
+    if (!out) return r.file;
+    if (fs.existsSync(out)) return out;
+    await fsp.mkdir(path.dirname(out), { recursive: true });
+    let src = r.file;
+    let tmp = null;
+    try {
+      if (r.member) {
+        tmp = await fsp.mkdtemp(path.join(os.tmpdir(), 'cartridge-rom-'));
+        await inst.extract(r.file, tmp);
+        src = path.join(tmp, ...r.member.split('/'));
+        if (!r.convert) {
+          // a disc inside a zip: keep the unpacked disc (with its tracks) for this game
+          await fsp.cp(path.dirname(src), path.dirname(out), { recursive: true, force: true });
+          return out;
+        }
+      }
+      const info = await (this.hooks.inspectRom || rom.inspectRom)(src);
+      const data = info.alt && info.alt.sha1 === r.sha1 ? info.alt.data : info.data;
+      await fsp.writeFile(out, data);
+      return out;
+    } finally {
+      if (tmp) fsp.rm(tmp, { recursive: true, force: true }).catch(() => {});
+    }
+  }
+
+  /** Copies older versions of Cartridge made: how many and how big. */
+  async romCopies() {
+    const list = this.state.roms.filter((r) => this.isRomCopy(r.file));
+    let bytes = 0;
+    for (const r of list) { try { bytes += (await fsp.stat(r.file)).size; } catch { /* gone */ } }
+    return { count: list.length, bytes, freed: this.romCopiesFreed || 0 };
+  }
+
+  /**
+   * One-time clean-up after updating from a version that copied every ROM: rescan the watched folders so each ROM
+   * points at the original, deleting the copy. Copies whose original isn't in a watched folder are left alone.
+   */
+  async migrateRomCopies() {
+    if (this.state.romCopiesMigrated) return null;
+    const before = await this.romCopies();
+    if (!before.count) { this.state.romCopiesMigrated = 1; await this.save(); return null; }
+    if (!(this.state.settings.romFolders || []).length) return { relinked: 0, freed: 0, left: before };
+    this.romCopiesFreed = 0;
+    const report = await this.scanRomFolders({ full: true });
+    this.state.romCopiesMigrated = 1;
+    await this.save();
+    this.emitChange();
+    return { relinked: (report || []).filter((r) => r.status === 'relinked').length, freed: this.romCopiesFreed, left: await this.romCopies() };
+  }
+
+  /** Delete the remaining old copies and forget those ROMs (their originals weren't found in a watched folder). */
+  async removeRomCopies() {
+    // first point every ROM that's in a watched folder at the original, so only true leftovers are removed
+    if ((this.state.settings.romFolders || []).length) await this.scanRomFolders({ full: true });
+    let freed = 0;
+    const keep = [];
+    for (const r of this.state.roms) {
+      if (this.isRomCopy(r.file)) freed += await this.deleteRomCopy(r.file);
+      else keep.push(r);
+    }
+    const removed = this.state.roms.length - keep.length;
+    this.state.roms = keep;
+    for (const [g, rid] of Object.entries(this.state.romOverride)) if (!keep.some((r) => r.id === rid)) delete this.state.romOverride[g];
+    await this.save();
+    this.emitChange();
+    return { removed, freed };
   }
 
   async removeRomFolder(dir) {
@@ -368,7 +690,14 @@ class Library extends EventEmitter {
     this.emit('scan', true);
     const t0 = Date.now();
     this.scanning = this.addRoms(folders, { skipKnown: !full })
-      .then((report) => { log(`Scanned ${folders.length} ROM folder(s) in ${((Date.now() - t0) / 1000).toFixed(1)}s: ${report.filter((r) => r.status === 'added').length} added, ${report.length} checked`); return report; })
+      .then(async (report) => {
+        const missing = await this.markMissing();
+        const forgot = missing ? await this.forgetMissing({ auto: true, reachable: folders }) : 0;
+        if (missing) { await this.save(); this.emitChange(); }
+        log(`Scanned ${folders.length} ROM folder(s) in ${((Date.now() - t0) / 1000).toFixed(1)}s: ${report.filter((r) => r.status === 'added').length} added, ${report.length} checked, ${missing} missing (${forgot} forgotten)`);
+        if (forgot) report.push({ status: 'forgotten', count: forgot });
+        return report;
+      })
       .finally(() => { this.scanning = null; this.emit('scan', false); });
     return this.scanning;
   }
@@ -377,7 +706,9 @@ class Library extends EventEmitter {
     const r = this.state.roms.find((x) => x.id === id);
     if (!r) return;
     this.state.roms = this.state.roms.filter((x) => x.id !== id);
-    if (r.file.startsWith(this.dirs.roms)) await fsp.rm(r.file, { force: true });
+    if (this.isRomCopy(r.file)) await this.deleteRomCopy(r.file); // a copy made by an older Cartridge
+    const conv = this.convertedPathOf(r);
+    if (conv) await fsp.rm(conv, { force: true }).catch(() => {});
     for (const [g, rid] of Object.entries(this.state.romOverride)) if (rid === id) delete this.state.romOverride[g];
     await this.save();
     this.emitChange();
@@ -409,6 +740,8 @@ class Library extends EventEmitter {
       const { asset, tag } = rel.data;
       if (!asset) throw new Error(`This release has no ${{ darwin: 'Mac', linux: 'Linux' }[this.platform] || 'Windows'} download yet. Check the project page.`);
 
+      // the download, its unpacked files and the installed game can all be on the drive at once
+      if (asset.size) await disk.ensureSpace(this.dirs.downloads, asset.size * 4 + 200e6);
       archive = path.join(this.dirs.downloads, `${gameId}-${asset.name}`);
       await inst.download(asset.url, archive, {
         signal: controller.signal, digest: asset.digest,
@@ -424,6 +757,10 @@ class Library extends EventEmitter {
         await fsp.copyFile(archive, path.join(staging, asset.name));
       } else {
         await inst.extract(archive, staging);
+      }
+      // Mac: a zip holding a disk image (or a zipped app) gets opened too
+      if (this.platform === 'darwin' && await inst.expandNested(staging).catch((e) => { throw new Error(`Couldn't open the game's disk image: ${e.message}`); })) {
+        this.setJob(gameId, { phase: 'Unpacking', progress: null });
       }
       const content = await inst.unwrap(staging);
       const prevInstall = this.state.installed[gameId];
@@ -443,6 +780,11 @@ class Library extends EventEmitter {
         if (!fs.existsSync(p)) await fsp.writeFile(p, '');
       }
       const exe = await inst.findExecutable(target, g.exe, this.platform);
+      if (!exe && this.platform !== 'win32' && (await inst.walk(target)).some((f) => /\.exe$/i.test(f.full))) {
+        // the download turned out to be a Windows build: don't leave a game that can't run
+        await fsp.rm(target, { recursive: true, force: true }).catch(() => {});
+        throw new Error(`This download is a Windows build, and the project doesn't publish a ${this.platform === 'darwin' ? 'Mac' : 'Linux'} version yet.`);
+      }
       if (!exe) throw new Error(this.platform === 'darwin' ? "Installed, but couldn't find the game's app. Open the folder to start it manually." : "Installed, but couldn't find the game's .exe. Open the folder to start it manually.");
       if (this.platform === 'darwin') await inst.clearQuarantine(target);
       else if (this.platform !== 'win32') await fsp.chmod(exe, 0o755).catch(() => {});
@@ -467,7 +809,7 @@ class Library extends EventEmitter {
       if (archive) fsp.rm(archive, { force: true }).catch(() => {});
       this.emitChange();
       if (e.name === 'AbortError') return { ok: false, cancelled: true };
-      return { ok: false, error: e.message };
+      return { ok: false, error: disk.friendly(e, this.dirs.games).message };
     }
   }
 
@@ -476,10 +818,34 @@ class Library extends EventEmitter {
     if (j && j.abort) j.abort.abort();
   }
 
+  /**
+   * A copy the player built or installed themselves (ports with no download, such as LAS Recomp): Cartridge just
+   * starts it. `file` is the game's .exe, or a .bat/.cmd that starts it (for games that need a folder or options).
+   */
+  async linkInstall(gameId, file) {
+    if (!this.game(gameId)) throw new Error('Unknown game.');
+    if (!file || !fs.existsSync(file)) throw new Error("That file doesn't exist.");
+    const prev = this.state.installed[gameId];
+    if (prev && !prev.manual) throw new Error('Uninstall the copy Cartridge installed first.');
+    this.state.installed[gameId] = {
+      tag: 'Your own copy', dir: path.dirname(file), exe: file, manual: true, installedAt: Date.now(),
+      launchedOnce: prev ? prev.launchedOnce : false, playTime: prev ? prev.playTime || 0 : 0, lastPlayed: prev ? prev.lastPlayed : null,
+    };
+    await this.save();
+    this.emitChange();
+    return this.state.installed[gameId];
+  }
+
   async uninstall(gameId) {
     const i = this.state.installed[gameId];
     if (!i) return;
     if (this.running.has(gameId)) throw new Error('Close the game first.');
+    if (i.manual) { // the player's own copy: forget it, never delete their files
+      delete this.state.installed[gameId];
+      await this.save();
+      this.emitChange();
+      return;
+    }
     await this.backupGame(gameId, 'before uninstall').catch(() => null);
     await fsp.rm(i.dir, { recursive: true, force: true });
     delete this.state.installed[gameId];
@@ -492,8 +858,8 @@ class Library extends EventEmitter {
     const spec = (g.rom && g.rom.setup) || { type: 'in-app' };
     const match = romdb.bestRomForGame(g, this.state.roms, this.state.romOverride[g.id]);
     if (!match) return { needsRom: true };
-    const src = match.rom.file;
-    if (!fs.existsSync(src)) return { needsRom: true, missing: src };
+    if (!fs.existsSync(match.rom.file)) return { needsRom: true, missing: match.rom.file };
+    const src = await this.romPath(match.rom);
     const exeDir = path.dirname(i.exe);
     if (spec.type === 'beside-exe') {
       const dest = path.join(exeDir, spec.fileName || path.basename(src));
@@ -523,9 +889,13 @@ class Library extends EventEmitter {
     const firstRun = !i.launchedOnce;
     // Mac app bundles start through "open"; -W waits until the game quits, so play time and backups still work
     const isApp = this.platform === 'darwin' && /\.app$/i.test(i.exe);
+    // .bat/.cmd (a game linked by the player that needs a folder or options) run through cmd, which waits for the game
+    const isScript = this.platform === 'win32' && /\.(bat|cmd)$/i.test(i.exe);
     const child = isApp
       ? spawn('open', ['-W', '-n', i.exe], { detached: true, stdio: 'ignore' })
-      : spawn(i.exe, [], { cwd: path.dirname(i.exe), detached: true, stdio: 'ignore', windowsHide: false });
+      : isScript
+        ? spawn(process.env.ComSpec || 'cmd.exe', ['/d', '/c', i.exe], { cwd: path.dirname(i.exe), detached: true, stdio: 'ignore', windowsHide: true })
+        : spawn(i.exe, [], { cwd: path.dirname(i.exe), detached: true, stdio: 'ignore', windowsHide: false });
     const started = Date.now();
     this.running.set(gameId, child);
     child.on('error', () => { this.running.delete(gameId); this.emitChange(); });
@@ -569,16 +939,33 @@ class Library extends EventEmitter {
     return game;
   }
 
+  // ---------- favorites ----------
+  async setFavorite(gameId, on) {
+    const fav = this.state.favorites || (this.state.favorites = {});
+    if (on) fav[gameId] = Date.now(); else delete fav[gameId];
+    await this.save();
+    this.emitChange();
+    return !!on;
+  }
+
   // ---------- community catalog ----------
+  /** Find more was opened: ports first seen since the visit before this session's first one count as new. */
+  async discoverVisited() {
+    if (this.discoverPrev == null) this.discoverPrev = this.state.discoverVisitedAt || 0;
+    this.state.discoverVisitedAt = Date.now();
+    await this.save();
+  }
+
   /** All community-listed ports (cached for a day so browsing works offline). */
   async communityList({ force = false } = {}) {
     const cache = path.join(this.dataDir, 'community.json');
     let cached = null;
     try { cached = JSON.parse(await fsp.readFile(cache, 'utf8')); } catch { /* none yet */ }
+    if (cached && cached.v !== 3) cached = null; // older caches lack Recompendium or the download/build labels
     if (!force && cached && Date.now() - cached.fetchedAt < 24 * 3600 * 1000) return this.markCommunity(cached.items);
     try {
       const items = await community.fetchCommunity();
-      await fsp.writeFile(cache, JSON.stringify({ fetchedAt: Date.now(), items }));
+      await fsp.writeFile(cache, JSON.stringify({ v: 3, fetchedAt: Date.now(), items }));
       return this.markCommunity(items);
     } catch (e) {
       if (cached) return this.markCommunity(cached.items);
@@ -586,12 +973,26 @@ class Library extends EventEmitter {
     }
   }
 
+  /** Remember when each port was first seen (the very first list is the baseline: nothing is "new" in it). */
+  noteFirstSeen(items) {
+    const seen = this.state.communityFirstSeen || (this.state.communityFirstSeen = {});
+    const baseline = !Object.keys(seen).length;
+    const now = Date.now();
+    let changed = false;
+    for (const c of items) if (!(c.key in seen)) { seen[c.key] = baseline ? 0 : now; changed = true; }
+    return changed;
+  }
+
   markCommunity(items) {
+    if (this.noteFirstSeen(items)) this.save().catch(() => {});
+    const seen = this.state.communityFirstSeen || {};
+    const since = this.discoverPrev != null ? this.discoverPrev : (this.state.discoverVisitedAt || 0);
     const repos = new Map(this.games.map((g) => [`${(g.repo || '').toLowerCase()}#${(g.assetMatch || '').replace(/\\/g, '').toLowerCase()}`, g.id]));
     const plainRepos = new Map(this.games.map((g) => [(g.repo || '').toLowerCase(), g.id]));
     return {
       source: community.SOURCE_PAGE,
-      items: items.map((c) => ({ ...c, onShelf: repos.get(c.key) || (!c.assetFilter && plainRepos.get(c.repo.toLowerCase())) || null })),
+      recompendium: community.RECOMPENDIUM_PAGE,
+      items: items.map((c) => ({ ...c, isNew: seen[c.key] > 0 && seen[c.key] > since, onShelf: repos.get(c.key) || (!c.assetFilter && plainRepos.get(c.repo.toLowerCase())) || null })),
     };
   }
 

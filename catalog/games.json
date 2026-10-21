@@ -107,6 +107,11 @@
       "short": "NSW",
       "color": "#e1251b"
     },
+    "switch2": {
+      "name": "Nintendo Switch 2",
+      "short": "NS2",
+      "color": "#ff3c28"
+    },
     "sg1000": {
       "name": "Sega SG-1000",
       "short": "SG",
@@ -178,6 +183,17 @@
       "thumbs": "Sony_-_PlayStation_3",
       "color": "#1d3c8f"
     },
+    "ps4": {
+      "name": "PlayStation 4",
+      "short": "PS4",
+      "thumbs": "Sony_-_PlayStation_4",
+      "color": "#003791"
+    },
+    "ps5": {
+      "name": "PlayStation 5",
+      "short": "PS5",
+      "color": "#e8e8f0"
+    },
     "psp": {
       "name": "PlayStation Portable",
       "short": "PSP",
@@ -201,6 +217,16 @@
       "short": "360",
       "color": "#5dc21e",
       "thumbs": "Microsoft_-_Xbox_360"
+    },
+    "xone": {
+      "name": "Xbox One",
+      "short": "XB1",
+      "color": "#107c10"
+    },
+    "xsx": {
+      "name": "Xbox Series X|S",
+      "short": "XSX",
+      "color": "#0e7a0d"
     },
     "pce": {
       "name": "PC Engine / TurboGrafx-16",

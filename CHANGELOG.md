@@ -1,6 +1,154 @@
 # Cartridge changelog
 
-Version numbers count up from 1.13: the next release is 1.14, then 1.15, and so on. The version shows next to the logo, in the window title and at the bottom of Settings.
+From 1.34 Cartridge is shown as **Beta 0.0001** (next to the logo, in the window title, on About and in Settings). Behind that name the build number keeps counting (1.34, 1.35…), because installers and the update check need a number that always goes up. Release tags on GitHub use the build number (v1.34); release titles use the beta name.
+
+## Beta 0.0012 (build 1.45) — October 20, 2026
+
+- **★ Favorites button** on the Games tab, right after ROMs in the All · Decomp · Recomp · Remake · ROMs row. One click shows only your favorites, with their count; key 6 or LB/RB on a controller reach it too. It replaces the Favorites option in the Status menu. With no favorites yet, it explains how to add one.
+
+## Beta 0.0011 (build 1.44) — October 20, 2026
+
+**Fixed: ROM scans filled the C: drive**
+- A full rescan unpacked every zipped ROM into a temporary folder on the C: drive at the same time, and only cleaned up at the end. With thousands of zips that filled the drive, the scan failed with "no space left on device", and the clean-up of old ROM copies kept failing with it. Each zip is now unpacked, checked and deleted before the next one, so a scan never needs more than one zip's worth of space.
+- Before unpacking or installing anything, Cartridge checks there's enough free space. If not, it says so plainly ("Your C: drive is too full: this needs about 2 GB and there's 300 MB") instead of failing quietly.
+- A scan that runs out of space stops cleanly and tries those files again next time (before, they could be skipped for good).
+- At start-up, Cartridge warns you when the drive it uses has less than 5 GB free.
+
+**Safer clean-up of old ROM copies**
+- Deleting an old copy now deletes that one file (and a disc's listed tracks), never the folder it's in. Anything inside a watched ROM folder is never treated as a copy, even if it's inside Cartridge's own ROMs folder.
+- Removing old copies first rescans your ROM folders, so every ROM that's there points at your own file before any copy is removed.
+
+**Missing ROMs**
+- ROMs whose file was moved, deleted or is on an unplugged drive are marked **File missing** in My ROMs, and no longer unlock games.
+- A ROM that moved inside your watched folders is found again automatically. One deleted from a watched folder is taken off the list after the next scan. One from somewhere else (maybe an unplugged drive) stays, marked missing, until you remove it.
+- **Remove missing from the list** (in My ROMs and in Check my setup) tidies the list. No files are ever deleted.
+
+**Check my setup** (Help tab, first topic)
+- One button checks for: a drive that's nearly full, leftover downloads, temporary files left by a closed scan, old ROM copies, a big pile of converted ROMs, ROM folders that can't be found, ROMs with a missing file, and installed games whose files are gone. Each comes with a plain explanation and, where possible, a fix button. Fixes only tidy Cartridge's own list and leftovers.
+
+**Favorites and Recently played**
+- **☆ Add to favorites** on any game's page. Favorites get a ★ on their cover and their own row on the Games tab.
+- The "Continue playing" row is now called **Recently played**, at the top of the Games tab.
+
+**New on Find more**
+- Ports added to the lists since your last visit get a **NEW** badge. The Find more tab shows how many ("3 new"), and a **✦ New** chip shows just those. Nothing counts as new the very first time.
+
+**See what's new before updating**
+- **Update to …** now shows that version's release notes first, with **Update now** or **Not now**.
+
+**Colors**
+- **Settings → Colors**: eight themes (Cartridge Red, Midnight Blue, Synthwave, Toxic Green, Sunset Orange, Arctic, Pocket Green, Steel). The whole app changes straight away, including the sky and the grid floor.
+- **Custom**: pick the main color, accent, highlight, links & grid, horizon glow and sky yourself, starting from any theme.
+
+## Beta 0.0010 (build 1.43) — October 20, 2026
+
+**Help, right where you need it**
+- New **Help** tab (also on LT/RT with a controller): short, plain-language topics with steps and buttons that take you to the right screen. Getting started, ROMs and where to get them, installing and updating, Find more, games you build yourself, games that need your game files, Steam, save backups, controllers, Mac notes, and what to do when something goes wrong. Searchable; with a controller, left/right go through the topics.
+- Small **?** buttons next to the confusing parts (Find more's labels, Add your copy, a game's "What you need") open the matching topic in a pop-up without leaving the screen.
+
+**Find more says what each port takes**
+- Each card has a label: **Download** (a release Cartridge can install), **Build it yourself** (no download: build it from the project's instructions, then Add your copy), and **Needs game files** (wants files from your own console or disc, not just a ROM; Switch, Wii U, PS3, PS4, Xbox and similar).
+- New filter next to the type chips: **Any · Download · Build it yourself**.
+- The labels come from the lists' own data (Recompendium tracks each project's latest release daily). The list is refreshed once on first start so the labels appear.
+- A game added from Find more shows the same note on its page, under **What you need**, with a link to the right Help topic.
+
+**No more dead end with Add your copy**
+- **Use your own copy instead** is now on the page of any game added from Find more or GitHub, even after Cartridge installed its own download. Pick your .exe or .bat and Cartridge offers to swap: it backs up the saves, removes its download and uses your copy. You no longer have to uninstall first.
+- Your own copy shows **Pick a different file** to change which file starts it.
+
+## Beta 0.0009 (build 1.42) — October 20, 2026
+
+**Add a copy you built yourself**
+- Some ports have no download: you build them yourself with your own game (LAS Recomp, many new Switch and Wii U recomps). Their page now has **Add your copy** (also shown as "Already have it? Add your copy" under Install). Pick the game's .exe, or a .bat/.cmd file that starts it, and the game gets a normal **Play** button, play time, save backups and Add to Steam.
+- A .bat file is the way to go for games that must start from their own folder or with options (LAS Recomp needs `build\lasrecomp.exe extracted`, run from its folder, with MSYS2's files on the PATH). Cartridge runs it hidden and waits for the game to close.
+- Your own copy never gets update offers, and **Remove from Cartridge** only forgets it: your files are never deleted.
+
+## Beta 0.0008 (build 1.41) — October 19, 2026
+
+**Find more: a second, bigger list of ports**
+- Switch, Wii U and many other ports were missing because the list Find more used (the Quiver community catalog) has none of them. Find more now also reads **Recompendium** (recompendium.com), a well-kept list of about 210 recomps and PC ports, and merges the two. New on the page: Switch (Link's Awakening, Hyrule Warriors: Definitive Edition), Wii U (The Wind Waker HD), PS4 (Bloodborne, God of War III, Uncharted, Shadow of the Colossus, Killzone Shadow Fall, P.T., The Order: 1886), PS3 (Drakengard 3, Disgaea D2, The Simpsons Arcade Game), Xbox One, Dreamcast (Sonic Adventure), 3DS (Ocarina of Time 3D) and dozens more N64, PS1, Xbox 360 and GameCube ports.
+- Also listed: three newer ports found on the web that neither list has yet: New Super Mario Bros. U and Monster Hunter 3 Ultimate (Wii U), and Pokémon: Let's Go, Eevee! (Switch).
+- A port on both lists shows once, keeping Quiver's download details and adding Recompendium's description, status and what files it needs.
+- Each card shows how far along the port is (**Playable**, **Complete**, or **Early: expect bugs**). Hover over a card to read its description and what it needs.
+- A port added from Recompendium brings its description, original developer, year and requirements onto its game page.
+- If one list can't be reached, Find more still shows the other. The list is refreshed once a day; **Refresh list** gets it now.
+- Recompendium's data is shared under CC BY-SA 4.0 and is credited on Find more and on About.
+- Many of the newest ports, especially Switch, Wii U and PS4 ones, have no download yet, or are only for Windows. Those show **View source** instead of Install, as before.
+
+## Beta 0.0007 (build 1.40) — October 19, 2026
+
+- **Fixed (Mac): the small icon looked scrambled** in Finder's list view, the sidebar and for the installer disk. The build tool shrank one large picture into the Mac icon file and garbled the small sizes. Cartridge now ships its own Mac icon file (`build/icon.icns`) with every size drawn separately, from 16 to 1024 pixels, and the tiny sizes use the simpler cartridge so they stay clear. The installer disk uses the same icon.
+
+## Beta 0.0006 (build 1.39) — October 19, 2026
+
+**Wii U**
+- Wii U was already supported (.wua, .wud, .wux, .rpx, and dumped game folders with code/content/meta, named from meta.xml). New: **NUS folders**, the encrypted format downloaded from Nintendo's servers (title.tmd + title.tik + 000000xx.app files), count as one game, named after the folder, with the title ID read from title.tmd.
+- **.wuhb** homebrew bundles (Aroma) are recognised.
+
+## Beta 0.0005 (build 1.38) — October 19, 2026
+
+**Modern consoles**
+- **PlayStation 4:** .pkg files (with the title ID read from the package) and dumped game folders. PS4 and Vita folders look alike (sce_sys/param.sfo + eboot.bin), so the title ID decides: CUSA… is PS4, PCSx… is Vita.
+- **PlayStation 5:** dumped game folders with sce_sys/param.json; the game's name and title ID come from param.json.
+- **Xbox One and Xbox Series X|S:** dumped game folders with MicrosoftGame.config (or appxmanifest.xml); the name comes from the config. Series games are told apart by a folder named "Xbox Series".
+- **Nintendo Switch 2:** .nsp/.xci files in a folder named "Switch 2" (they use the same file types as the Switch).
+- Box art for PS4 comes from libretro-thumbnails; the others use SteamGridDB if you've added a key.
+
+**PS3 and Switch**
+- Both were already supported (PS3: disc dumps with PS3_GAME, .iso, .pkg; Switch: .nsp .xci .nsz .xcz). New: **PS3 digital (PSN) game folders** as installed on the console (for example NPUB30910 with PARAM.SFO and USRDIR inside) are recognised too.
+- Switch has no free cover library like the other consoles, so Switch covers come from SteamGridDB: add a free key in Settings → Cover art.
+
+**Dreamcast**
+- Dreamcast was already supported (.gdi, .cdi, .cue + .bin, .iso). **.chd files are now recognised by their contents** instead of only by their folder name: a CHD holding a GD-ROM is a Dreamcast game (or NAOMI/Atomiswave if the folder says so), and a CHD holding a DVD is a PS2-era disc.
+
+## Beta 0.0004 (build 1.37) — October 19, 2026
+
+- **New square app icon everywhere:** the glowing red cartridge on a rounded 90s-sunset tile with a neon grid floor. One design for the Mac app (Apple's standard rounded tile with its margin and shadow), the Windows app, installer and taskbar, and the About and welcome screens. Tiny Windows sizes use a simpler cartridge so it stays clear at 16 pixels. `build/icon-src/make_square.py` rebuilds all of them.
+
+## Beta 0.0003 (build 1.36) — October 19, 2026
+
+**3DS games**
+- **Azahar's compressed 3DS formats** (.zcci, .zcxi, .z3dsx, .zcia, added to the Azahar emulator in 2025) are recognised.
+- **Big zip and 7z files are no longer skipped.** Archives over 256 MB used to be passed over without a word, and most zipped 3DS (and Switch, Wii U, disc) games are bigger than that. Cartridge now lists what's inside without unpacking it, adds the games it finds by name, and only unpacks one if a game needs the file.
+- **Cleaner names:** release numbers and words like "Decrypted" are removed from file names ("0337 - Mario Kart 7 (USA) Decrypted.3ds" → "Mario Kart 7"), so covers and matching work better.
+
+## Beta 0.0002 (build 1.35) — October 19, 2026
+
+**Xbox 360 games are recognised**
+- **Fixed: "Couldn't tell which console this file is for" for Xbox 360 .iso files.** Cartridge looked for the disc's signature 64 KB past where it really is on XGD2 discs, the format most Xbox 360 games from about 2006 to 2011 use. Full dumps of XGD2 and XGD3 discs are now recognised.
+- Trimmed .iso files (made with extract-xiso and similar tools) start the same way for Xbox 360 and the original Xbox. Cartridge now looks inside for the game file (default.xex for Xbox 360, default.xbe for the original Xbox) instead of guessing from the folder name.
+- **Games on Demand and Xbox Live Arcade downloads** (files with no extension inside folders like 00007000 or 000D0000) are recognised, with the game's name and title ID read from the package.
+- Like all disc games, they stay where they are; nothing is copied.
+
+## Beta 0.0001 (build 1.34) — October 19, 2026
+
+**Your ROMs are never copied any more**
+- Older versions saved a cleaned-up copy of every cartridge ROM they checked into `Cartridge/ROMs`, which with a big collection used a lot of disk space (found on a Mac, but it happened on Windows too). Now Cartridge only remembers where each ROM is, including its place inside a zip, and leaves the file alone.
+- A copy is made only when a game needs a different file (a .v64 or .n64 converted to .z64, a header removed, or a ROM unpacked from a zip), only for that game's ROM, and only when you install or play it. These go in `Cartridge/ROMs/Converted`. Removing a ROM from My ROMs deletes its converted copy too; your own file is never touched.
+- **Space from older versions is given back.** The first time 1.34 starts, it rescans your watched ROM folders, points every ROM at your own file and deletes its old copy, then says how much space was freed. Copies whose original isn't in a watched folder are listed under **Settings → ROM copies**, with a button to remove them.
+
+**Version name**
+- Cartridge now shows **Beta 0.0001** instead of a version number; see the note at the top.
+- The update message says "A new Cartridge is out!" with a **Download** button.
+
+## 1.33 — October 19, 2026
+
+- **Fixed (Mac): "Installed, but couldn't find the game's app".** The Harbour Masters ports (Ship of Harkinian, 2 Ship 2 Harkinian, Starship, SpaghettiKart, Ghostship) publish their Mac version as a zip with a disk image inside (for example SoH-Mac.zip → SoH.dmg → the app). Cartridge now opens that inner disk image (or a zipped app) automatically, so the game is ready to play straight after installing.
+- **New filter: Status → "Works on this Mac"** ("Works on this PC" on Windows). It shows only games that have a download for this computer, plus anything already installed. On a Mac the Games screen starts with it selected, since most ports are Windows-only; choose **Any** or **Reset** to see everything.
+- "READY TO GO!" badges and the **Ready to install** row leave out games that have no download for this computer.
+- If an install fails, the message has an **Open folder** button that opens the game's folder.
+
+## 1.32 — October 19, 2026
+
+- **Fixed: couldn't scroll down on a laptop screen** (found on a MacBook). The big game banner at the top can fill most of a smaller window, and scrolling with the mouse or trackpad over it did nothing. Now scrolling anywhere, banner included, scrolls the games below, and the banner shrinks as usual once you're scrolling.
+- On shorter windows (laptops, under about 1000 pixels tall) the banner is smaller: a smaller box and title, and the game description is left to the info panel. Under about 820 pixels the credits line is hidden too.
+
+## 1.31 — October 19, 2026
+
+- **Fixed (Mac): "Couldn't install zelda3".** zelda3 publishes a single download with no system in its name, and it's a Windows build. On a Mac (and Linux) Cartridge now only uses downloads whose name says they're for that system, or Mac disk images (.dmg). zelda3 and similar games now say "No Mac build yet" instead of downloading something that can't run.
+- If a download still turns out to be a Windows build, Cartridge removes it and says so, instead of leaving a game that can't start.
+- Cartridge re-checks every game's download when it's updated or moved to another computer, so an old choice can't stick around.
+- Confirmed on an M1 Max: the bundled fonts from 1.30 fixed the question-mark boxes.
 
 ## 1.30 — October 19, 2026
 

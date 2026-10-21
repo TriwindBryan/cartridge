@@ -90,6 +90,8 @@ function hydrateArt(root = document) {
 // Steam artwork is drawn on a canvas: use the bundled heavy font on a Mac, Arial Black elsewhere
 const CANVAS_FONT = document.documentElement.classList.contains('os-mac') ? '"Cartridge Heavy", "Arial Black", sans-serif' : '"Arial Black", "Cartridge Heavy", "Segoe UI", sans-serif';
 const isMac = () => !!S && S.platform === 'darwin';
+/** What people see as the version: the label ("Beta 0.0001") when there is one, otherwise v1.xx. */
+const verLabel = () => (S && S.label) || (S && S.version ? `v${S.version}` : '');
 const osName = () => (!S ? 'Windows' : S.platform === 'darwin' ? 'Mac' : S.platform === 'linux' ? 'Linux' : 'Windows');
 const thisComputer = () => (isMac() ? 'Mac' : 'PC');
 const sysColor = (g) => (S.systems[g.system] || {}).color || '#c8161d';
@@ -103,7 +105,7 @@ function burstOf(g) {
   if (g.running) return { cls: 'lime', text: 'NOW<br>PLAYING' };
   if (g.updateAvailable) return { cls: 'pink', text: 'NEW<br>UPDATE!' };
   if (g.installed) return null;
-  if (g.romMatch && !g.sourceOnly) return { cls: '', text: 'READY<br>TO GO!' };
+  if (g.romMatch && !g.sourceOnly && !(g.release && !g.release.asset)) return { cls: '', text: 'READY<br>TO GO!' };
   return null;
 }
 /** Does this port ask for the ROM itself when it starts? (Then loading it in Cartridge is optional.) */
@@ -118,7 +120,7 @@ const TYPES = [
   ['recomp', 'Recomps', 'Machine code recompiled to run on PC', 'gold', 'RECOMP'],
   ['remake', 'Remakes', 'Recreated from scratch', 'lime', 'REMAKE'],
 ];
-const SHOW = [...TYPES, ['roms', 'My ROMs', 'Only the ROM files and discs you have', 'rom', 'ROM']];
+const SHOW = [...TYPES, ['roms', 'My ROMs', 'Only the ROM files and discs you have', 'rom', 'ROM'], ['favorites', '★ Favorites', 'Only your favorite games', 'fav', '★']];
 const typeOf = (kind) => TYPES.find((t) => t[0] === KIND_GROUP(kind));
 const romMode = () => ui.kind === 'roms';
 /** One row of chunky buttons: All · Decomps · Recomps · Remakes (· My ROMs). */
@@ -168,10 +170,11 @@ function filtered() {
   const q = ui.query.trim().toLowerCase();
   const list = S.games.filter((g) => {
     if (ui.system && g.system !== ui.system) return false;
-    if (ui.kind && KIND_GROUP(g.kind) !== ui.kind) return false;
+    if (ui.kind === 'favorites' ? !g.favorite : ui.kind && KIND_GROUP(g.kind) !== ui.kind) return false;
     if (ui.filter === 'installed' && !g.installed) return false;
     if (ui.filter === 'ready' && !(g.romMatch && !g.installed && !g.sourceOnly)) return false;
     if (ui.filter === 'needs' && (g.romMatch || g.sourceOnly)) return false;
+    if (ui.filter === 'available' && !runsHere(g)) return false;
     if (!q) return true;
     const hay = [g.title, g.port, g.developer, g.publisher, g.kind, g.repo, g.year, ...(g.credits || []).map((c) => c.name), (S.systems[g.system] || {}).name, (S.systems[g.system] || {}).short].join(' ').toLowerCase();
     return q.split(/\s+/).every((w) => hay.includes(w));
@@ -201,7 +204,7 @@ async function guard(fn) {
 
 // ---------------------------------------------------------------- header
 function renderHeader() {
-  const ver = $('#ver'); if (ver && S.version) ver.textContent = `v${S.version}`;
+  const ver = $('#ver'); if (ver && S.version) { ver.textContent = verLabel(); ver.title = `About Cartridge (build ${S.version})`; }
   $('#c-all').textContent = S.games.length;
   $('#c-roms').textContent = S.roms.length || '';
   document.querySelectorAll('#tabs .tab').forEach((b) => b.classList.toggle('active', b.dataset.view === ui.view));
@@ -209,12 +212,12 @@ function renderHeader() {
   const pill = $('#update-pill');
   if (pill) {
     pill.hidden = !up;
-    if (up) pill.textContent = `v${up.version} is out`;
+    if (up) pill.textContent = 'Update available';
   }
   $('#btn-support').hidden = !(S.links || {}).kofi;
   if (up && !ui.updateToasted) {
     ui.updateToasted = true;
-    toast(`Cartridge ${up.version} is out!`, "Your games, ROMs and saves carry over. Download it and run the installer.", 'ok', [['Download', () => api.openUrl(up.download || up.url)], ["What's new", () => api.openUrl(up.url)]]);
+    toast('A new Cartridge is out!', "Your games, ROMs and saves carry over. Download it and run the installer.", 'ok', [['Download', () => api.openUrl(up.download || up.url)], ["What's new", () => api.openUrl(up.url)]]);
   }
   if (!S.settings.welcomeSeen && !ui.welcomeShown) showWelcome();
 }
@@ -246,6 +249,90 @@ async function closeWelcome(next) {
   if (next) setView(next);
 }
 
+// ---------------------------------------------------------------- help
+const HELP_TOPICS = window.HELP || [];
+const helpUi = { topic: 'start', q: '' };
+
+function helpTopicHtml(t, { inModal = false } = {}) {
+  const acts = (t.actions || []).map(([label, target]) => `<button class="btn3d small ${target === 'log' ? 'purple' : ''}" data-help-act="${esc(target)}">${esc(label)}</button>`).join('');
+  return `<div class="help-topic">
+    <h2>${esc(t.title)}</h2>
+    <p class="lead">${esc(t.lead)}</p>
+    <ol>${t.steps.map((x) => `<li>${x}</li>`).join('')}</ol>
+    <div class="help-actions">${acts}${inModal ? `<button class="btn-link" data-help-go="${esc(t.id)}">Open in Help</button>` : ''}</div>
+  </div>`;
+}
+
+function helpMatches() {
+  const words = helpUi.q.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return HELP_TOPICS;
+  return HELP_TOPICS.filter((t) => {
+    const hay = `${t.title} ${t.lead} ${t.keywords || ''} ${t.steps.join(' ')}`.replace(/<[^>]+>/g, ' ').toLowerCase();
+    return words.every((w) => hay.includes(w));
+  });
+}
+
+function renderHelp() {
+  $('#view').innerHTML = `<div class="panel wide" id="help-page">
+    ${panelHead('Help', 'How Cartridge works, in a few steps per topic.')}
+    <label class="search help-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M16 16l5 5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+      <input id="help-q" placeholder="Search help, e.g. ROM, Steam, build" value="${esc(helpUi.q)}" autocomplete="off"></label>
+    <div class="help-grid"><nav class="help-toc" id="help-toc"></nav><div id="help-body"></div></div>
+  </div>`;
+  renderHelpBody();
+}
+
+function renderHelpBody() {
+  const toc = $('#help-toc'), body = $('#help-body');
+  if (!toc) return;
+  const list = helpMatches();
+  if (!list.some((t) => t.id === helpUi.topic) && list.length) helpUi.topic = list[0].id;
+  toc.innerHTML = list.map((t) => `<button class="${t.id === helpUi.topic ? 'on' : ''}" data-help-topic="${esc(t.id)}">${esc(t.title)}</button>`).join('');
+  const t = list.find((x) => x.id === helpUi.topic);
+  body.innerHTML = t ? helpTopicHtml(t) + (t.special === 'setup' ? `<div class="setup-box"><button class="btn3d" data-act="check-setup">${setupState.running ? 'Checking…' : setupState.result ? 'Check again' : 'Check now'}</button><div id="setup-results">${setupResultsHtml()}</div></div>` : '')
+    : '<p class="help-empty">Nothing matches that. Try another word, like ROM, install or Steam.</p>';
+}
+
+// ---------------------------------------------------------------- check my setup
+const setupState = { running: false, result: null, error: null };
+function setupResultsHtml() {
+  const r = setupState.result;
+  if (setupState.error) return `<p class="setup-bad">${esc(setupState.error)}</p>`;
+  if (!r) return '';
+  const issues = r.issues.map((x) => `<div class="setup-issue ${x.level}">
+      <b>${esc(x.title)}</b><p>${esc(x.detail)}</p>
+      ${x.fix ? `<button class="btn3d small ${x.level === 'bad' ? '' : 'purple'}" data-setup-fix="${esc(x.fix.id)}">${esc(x.fix.label)}</button>` : ''}
+    </div>`).join('');
+  const good = r.ok.map((x) => `<li>${esc(x)}</li>`).join('');
+  return `${r.issues.length ? `<h3 class="setup-h">${r.issues.length} thing${r.issues.length > 1 ? 's' : ''} to look at</h3>${issues}` : '<h3 class="setup-h good">Everything looks good</h3>'}
+    ${good ? `<ul class="setup-ok">${good}</ul>` : ''}`;
+}
+async function runSetupCheck() {
+  setupState.running = true; setupState.error = null;
+  renderHelpBody();
+  try { setupState.result = await api.checkSetup(); } catch (e) { setupState.error = e.message; }
+  setupState.running = false;
+  if (ui.view === 'help') renderHelpBody();
+}
+
+function openHelp(topic) {
+  helpUi.topic = topic || helpUi.topic; helpUi.q = '';
+  closeTip();
+  if (ui.view === 'help' && $('#help-page')) { const q = $('#help-q'); if (q) q.value = ''; renderHelpBody(); }
+  else setView('help');
+}
+
+/** The small "?" buttons: one help topic in a pop-up, without leaving the screen. */
+function showTip(topic) {
+  const t = HELP_TOPICS.find((x) => x.id === topic);
+  if (!t) return openHelp(topic);
+  const m = $('#modal');
+  m.innerHTML = `<div class="modal tip" role="dialog" aria-modal="true">${helpTopicHtml(t, { inModal: true })}<div class="modal-actions"><button class="btn3d" data-tip-close="1">Got it</button></div></div>`;
+  m.hidden = false;
+  setTimeout(() => { const b = m.querySelector('[data-tip-close]'); if (b) b.focus(); }, 30);
+}
+function closeTip() { const m = $('#modal'); if (m.querySelector('.modal.tip')) { m.hidden = true; m.innerHTML = ''; } }
+
 // ---------------------------------------------------------------- about & credits
 let creditsCache = null;
 function renderAbout() {
@@ -257,7 +344,7 @@ function renderAbout() {
     <div class="about-top">
       <img class="about-icon" src="../build/icon.png" alt="">
       <div>
-        <p class="about-name">Cartridge <b>v${esc(S.version || '')}</b></p>
+        <p class="about-name">Cartridge <b>${esc(verLabel())}</b> <small class="sub">build ${esc(S.version || '')}</small></p>
         <p>A launcher for decompiled, recompiled and remade PC ports of classic games. You bring the ROMs, Cartridge does the rest.</p>
         <div class="inline about-btns">
           ${links.kofi ? `<button class="support-btn big" data-url="${esc(links.kofi)}"><span aria-hidden="true">♥</span> Support Cartridge on Ko-fi</button>` : ''}
@@ -271,8 +358,8 @@ function renderAbout() {
 
     <h3 class="about-h">Updates</h3>
     <div class="inline about-update">
-      <span id="update-status">${up ? `<b class="gold">Cartridge ${esc(up.version)} is out.</b>` : repoReady ? "You're on the latest version." : 'Update checks start once Cartridge has its GitHub home.'}</span>
-      ${up ? `<button class="btn3d small" data-url="${esc(up.download || up.url)}">Download ${esc(up.version)}</button>` : ''}
+      <span id="update-status">${up ? `<b class="gold">A new Cartridge is out (build ${esc(up.version)}).</b>` : repoReady ? "You're on the latest version." : 'Update checks start once Cartridge has its GitHub home.'}</span>
+      ${up ? `<button class="btn3d small" data-url="${esc(up.download || up.url)}">Download it</button>` : ''}
       ${repoReady ? '<button class="btn3d small purple" data-act-about="check">Check now</button>' : ''}
     </div>
 
@@ -285,6 +372,7 @@ function renderAbout() {
       <li><button class="btn-link" data-url="https://github.com/libretro-thumbnails">libretro-thumbnails</button>: box art, downloaded to your ${thisComputer()} as you need it</li>
       <li><button class="btn-link" data-url="https://github.com/libretro/libretro-database">libretro-database</button> and <button class="btn-link" data-url="https://www.no-intro.org">No-Intro</button>: checksums used to recognise your ROMs</li>
       <li><button class="btn-link" data-url="https://www.mamedev.org">MAME</button> and <button class="btn-link" data-url="https://github.com/finalburnneo/FBNeo">FinalBurn Neo</button>: the list of arcade games</li>
+      <li><button class="btn-link" data-url="https://github.com/tgeorgiadis/quiver-community-app-catalog">Quiver community catalog</button> and <button class="btn-link" data-url="https://recompendium.com/en/">Recompendium</button> (by Nio03, data under <button class="btn-link" data-url="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</button>): the ports on Find more</li>
       <li><button class="btn-link" data-url="https://www.steamgriddb.com">SteamGridDB</button>: extra covers, only if you add your own key</li>
       <li>GitHub: where every port, and Cartridge itself, is downloaded from</li>
       <li>Fonts: <button class="btn-link" data-url="https://github.com/googlefonts/AntonFont">Anton</button>, <button class="btn-link" data-url="https://github.com/Omnibus-Type/ArchivoBlack">Archivo Black</button> and <button class="btn-link" data-url="https://rsms.me/inter/">Inter</button>, under the SIL Open Font License</li>
@@ -322,6 +410,7 @@ function cardMarkup(g, row = '') {
     <div class="card-art">${artMarkup(g)}
       <span class="sys-tag">${esc(sys.short || '')}</span>
       <span class="type-tag t-${typeOf(g.kind)[3]}">${typeOf(g.kind)[4]}</span>
+      ${g.favorite ? '<span class="fav-tag" title="Favorite">★</span>' : ''}
       ${g.job ? `<div class="card-bar"><span style="width:${p ?? 100}%"></span></div>` : ''}
     </div>
     <span class="card-name">${esc(g.port)}<small>${g.installed ? '✓ Installed' : esc(g.title)}</small></span>
@@ -358,35 +447,40 @@ function shelfSections(list) {
   // Home rows: what you're playing, what's new, what's ready, then a row per console
   const rows = [];
   const playing = S.games.filter((g) => lastPlayed(g)).sort(SORTS.played[1]).slice(0, 24);
-  if (playing.length) rows.push({ key: 'playing', title: 'Continue playing', games: playing });
+  if (playing.length) rows.push({ key: 'playing', title: 'Recently played', games: playing });
+  const favs = list.filter((g) => g.favorite);
+  if (favs.length) rows.push({ key: 'favorites', title: '★ Favorites', games: favs });
   const added = S.games.filter((g) => g.addedAt).sort(SORTS.added[1]).slice(0, 24);
   if (added.length) rows.push({ key: 'added', title: 'Recently added', games: added });
   const installed = list.filter((g) => g.installed);
   if (installed.length) rows.push({ key: 'installed', title: 'Installed', games: installed });
-  const ready = list.filter((g) => g.romMatch && !g.installed && !g.sourceOnly);
+  const ready = list.filter((g) => g.romMatch && !g.installed && !g.sourceOnly && !(g.release && !g.release.asset));
   if (ready.length) rows.push({ key: 'ready', title: 'Ready to install', games: ready });
   return rows.concat(groupByConsole(list));
 }
 
-const SHORT = { '': 'All', decomp: 'Decomp', recomp: 'Recomp', remake: 'Remake', roms: 'ROMs' };
-const STATUS = [['installed', 'Installed'], ['ready', 'ROM ready'], ['needs', 'No ROM loaded']];
+const SHORT = { '': 'All', decomp: 'Decomp', recomp: 'Recomp', remake: 'Remake', roms: 'ROMs', favorites: '★ Favorites' };
+/** Can this game be played on this computer? Installed, or its latest release has a download for this system. */
+const runsHere = (g) => !!g.installed || (!g.sourceOnly && !!(g.release && g.release.asset));
+const STATUS = [['available', () => `Works on this ${thisComputer()}`], ['installed', 'Installed'], ['ready', 'ROM ready'], ['needs', 'No ROM loaded']];
+const statusLabel = (l) => (typeof l === 'function' ? l() : l);
 
 /** One slim row: what to show on the left, Filters (a small menu) and Updates on the right, active filters as tags below. */
 /** Two slim lines: what to show (All · Decomp · Recomp · Remake · ROMs), then Layout · Sort · Console · Status dropdowns. */
 function shelfBar() {
   const count = (fn) => S.games.filter(fn).length;
-  const statusN = { installed: count((x) => x.installed), ready: count((x) => x.romMatch && !x.installed && !x.sourceOnly), needs: count((x) => !x.romMatch && !x.sourceOnly) };
+  const statusN = { favorites: count((x) => x.favorite), available: count(runsHere), installed: count((x) => x.installed), ready: count((x) => x.romMatch && !x.installed && !x.sourceOnly), needs: count((x) => !x.romMatch && !x.sourceOnly) };
   const pool = romMode() ? S.roms : S.games;
   const consoles = Object.entries(S.systems).map(([id, s]) => [id, s, pool.filter((x) => x.system === id).length]).filter(([, , n]) => n);
   const chips = `<div class="show-chips" role="group" aria-label="Show">${SHOW.map(([id, , tip, col], i) =>
-    `${id === 'roms' ? '<span class="show-sep"></span>' : ''}<button class="show-chip t-${col}${(ui.kind || '') === id ? ' on' : ''}" data-type="${id}" title="${esc(tip)} (key ${i + 1})"><i></i>${SHORT[id]}<span class="n">${id === 'roms' ? S.roms.length : count((x) => !id || KIND_GROUP(x.kind) === id)}</span></button>`).join('')}</div>`;
+    `${id === 'roms' ? '<span class="show-sep"></span>' : ''}<button class="show-chip t-${col}${(ui.kind || '') === id ? ' on' : ''}" data-type="${id}" title="${esc(tip)} (key ${i + 1})"><i></i>${SHORT[id]}<span class="n">${id === 'roms' ? S.roms.length : id === 'favorites' ? count((x) => x.favorite) : count((x) => !id || KIND_GROUP(x.kind) === id)}</span></button>`).join('')}</div>`;
   const pick = (key, label, on, options) => `<label class="pick${on ? ' on' : ''}"><span>${label}</span><select data-pick="${key}">${options}</select></label>`;
   const opt = (value, label, cur) => `<option value="${esc(value)}"${cur === value ? ' selected' : ''}>${esc(label)}</option>`;
   const dropdowns = [
     pick('layout', 'Layout', false, opt('rows', 'Rows', ui.layout) + opt('grid', 'Grid', ui.layout)),
     pick('sort', 'Sort', ui.sort !== 'smart', Object.entries(SORTS).filter(([k]) => (!romMode() || ROM_SORTS[k]) && (k !== 'score' || S.settings.showMetacritic)).map(([k, [label]]) => opt(k, label, ui.sort)).join('')),
     pick('system', 'Console', !!ui.system, opt('', `All consoles (${pool.length})`, ui.system || '') + consoles.map(([id, sy, n]) => opt(id, `${sy.name} (${n})`, ui.system)).join('')),
-    romMode() ? '' : pick('filter', 'Status', ui.filter !== 'all', opt('all', `Any (${S.games.length})`, ui.filter) + STATUS.map(([id, label]) => opt(id, `${label} (${statusN[id]})`, ui.filter)).join('')),
+    romMode() ? '' : pick('filter', 'Status', ui.filter !== 'all', opt('all', `Any (${S.games.length})`, ui.filter) + STATUS.map(([id, label]) => opt(id, `${statusLabel(label)} (${statusN[id]})`, ui.filter)).join('')),
   ].join('');
   const extras = (ui.system || ui.filter !== 'all' || ui.sort !== 'smart' || ui.query.trim())
     ? `${ui.query.trim() ? `<button class="ftag" data-clear="query" title="Clear the search">“${esc(ui.query.trim())}”<b>×</b></button>` : ''}<button class="btn-link" data-act="reset-filters">Reset</button>` : '';
@@ -416,7 +510,9 @@ function renderShelf() {
   const body = !all.length && romMode()
     ? `<div class="panel empty"><h2>${S.roms.length ? 'No ROMs match' : 'No ROMs yet'}</h2><p>${S.roms.length ? 'Try a different search or console.' : 'Point Cartridge at the folder where you keep your ROMs and they all show up here with their covers.'}</p>${S.roms.length ? '<button class="btn3d" data-act="clear-filters">Show everything</button>' : '<button class="btn3d" data-act="add-folder">+ Add your ROM folder</button>'}</div>`
     : !all.length
-    ? `<div class="panel empty"><h2>${ui.filter === 'installed' && !ui.query ? 'Nothing installed yet' : 'No games match'}</h2><p>${ui.filter === 'installed' && !ui.query ? 'Pick a game and smash Install.' : 'Try a different search or filter.'}</p>${filtersActive() ? '<button class="btn3d" data-act="clear-filters">Clear filters</button>' : ''}</div>`
+    ? ui.kind === 'favorites' && !S.games.some((g) => g.favorite)
+      ? '<div class="panel empty"><h2>No favorites yet</h2><p>Open any game and click <b>☆ Add to favorites</b>. They all show up here, one click away.</p><button class="btn3d" data-type="">Show all games</button></div>'
+      : `<div class="panel empty"><h2>${ui.filter === 'installed' && !ui.query ? 'Nothing installed yet' : 'No games match'}</h2><p>${ui.filter === 'installed' && !ui.query ? 'Pick a game and smash Install.' : 'Try a different search or filter.'}</p>${filtersActive() ? '<button class="btn3d" data-act="clear-filters">Clear filters</button>' : ''}</div>`
     : sections.map((r) => `<section class="row-sec is-${ui.layout}" data-row="${r.key}">
         ${r.title ? `<h2 class="row-title"><span>${esc(r.title)}</span><small>${r.games.length}</small></h2>` : ''}
         ${ui.layout === 'grid' ? '' : '<div class="shelf-wrap"><button class="row-arrow left" data-row-scroll="-1" aria-label="Scroll left" tabindex="-1">‹</button>'}
@@ -436,8 +532,8 @@ function renderShelf() {
 // ---------------------------------------------------------------- hero (selected game)
 function primaryAction(g) {
   if (g.sourceOnly) {
-    return `<button class="btn3d huge purple" data-act="open-repo">View source</button>
-      <span class="note">No prebuilt download. You build this one yourself with your ROM, following the project's readme.</span>`;
+    if (!g.installed) return `<button class="btn3d huge purple" data-act="open-repo">View source</button>
+      <span class="note">No prebuilt download. You build this one yourself with your ROM, following the project's readme. Built it already? <button class="btn-link" data-act="link-exe">Add your copy</button><button class="help-q" data-help-tip="own" title="How this works">?</button></span>`;
   }
   if (g.job) {
     const p = g.job.progress;
@@ -453,14 +549,19 @@ function primaryAction(g) {
       ? '<button class="btn3d huge lime" disabled>Playing…</button>'
       : '<button class="btn3d huge lime" data-act="play">▶ Play</button>';
     const upd = g.updateAvailable ? `<button class="btn3d pink" data-act="install">Update to ${esc(g.release.tag)}</button>` : '';
-    return `${play}${upd}`;
+    // (built-in catalog games always have a proper download; added games may be build-it-yourself ports)
+    const own = g.installed.manual
+      ? '<span class="note">Your own copy. <button class="btn-link" data-act="link-exe">Pick a different file</button></span>'
+      : g.custom ? '<span class="note">Built or installed it yourself? <button class="btn-link" data-act="link-exe">Use your own copy instead</button><button class="help-q" data-help-tip="own" title="How this works">?</button></span>' : '';
+    return `${play}${upd}${own}`;
   }
+  const linkIt = ' <button class="btn-link" data-act="link-exe">Already have it? Add your copy</button><button class="help-q" data-help-tip="own" title="How this works">?</button>';
   if (g.release && !g.release.asset) {
-    return `<button class="btn3d huge" disabled>No ${osName()} build yet</button><span class="note">The latest release (${esc(g.release.tag)}) has nothing for ${osName()} yet.${isMac() ? ' Many ports are Windows-only; check the project page for Mac plans.' : ''}</span>`;
+    return `<button class="btn3d huge" disabled>No ${osName()} build yet</button><span class="note">The latest release (${esc(g.release.tag)}) has nothing for ${osName()} yet.${isMac() ? ' Many ports are Windows-only; check the project page for Mac plans.' : ''}${linkIt}</span>`;
   }
   const bits = [g.release && `Version ${g.release.tag}`, g.release && g.release.asset && fmtBytes(g.release.asset.size)].filter(Boolean).join(' · ');
   const err = g.releaseError && !g.release ? g.releaseError : '';
-  return `<button class="btn3d huge" data-act="install">Install</button><span class="note">${esc(err || bits)}</span>`;
+  return `<button class="btn3d huge" data-act="install">Install</button><span class="note">${esc(err || bits)}${linkIt}</span>`;
 }
 
 function romCart(g) {
@@ -529,6 +630,11 @@ const FORMAT_NOTES = {
   wiiu: 'A .wua file, a .wud/.wux disc image, or a dumped game folder (with code, content and meta inside).',
   ps3: 'A dumped game folder (with PS3_GAME inside), a disc .iso or a .pkg.',
   vita: 'A dumped game folder (with sce_sys inside) or a .vpk.',
+  ps4: 'A .pkg, or a dumped game folder (with sce_sys and eboot.bin inside).',
+  ps5: 'A dumped game folder (with sce_sys/param.json and eboot.bin inside).',
+  xone: 'A dumped game folder (with MicrosoftGame.config or appxmanifest.xml inside).',
+  xsx: 'A dumped game folder (with MicrosoftGame.config inside), in a folder named Xbox Series.',
+  switch2: 'A .nsp or .xci in a folder named Switch 2. Cartridge reads the name only and never needs or touches console keys.',
   dreamcast: '.gdi with its track files is the most common dump; .chd and .cdi work too.',
   xbox: 'A disc .iso (full or "xiso") or an extracted folder with default.xbe.',
   x360: 'A disc .iso or an extracted folder with default.xex.',
@@ -593,10 +699,11 @@ function renderDetail() {
       <div class="hero-more">
         ${credits}
         ${g.description ? `<p class="desc">${esc(g.description)}</p>` : ''}
+        <button class="btn-link fav-btn${g.favorite ? ' on' : ''}" data-act="favorite">${g.favorite ? '★ Favorite' : '☆ Add to favorites'}</button>
         <button class="btn-link" data-act="open-repo">Project page</button>
         ${g.site ? '<button class="btn-link" data-act="open-site">Website</button>' : ''}
         ${g.release && g.release.url ? '<button class="btn-link" data-act="open-notes">Release notes</button>' : ''}
-        ${g.installed ? `<span>Installed ${esc(g.installed.tag)}</span><button class="btn-link" data-act="open-folder">Open folder</button><button class="btn-link danger" data-act="uninstall">Uninstall</button>` : ''}
+        ${g.installed ? `<span>${g.installed.manual ? 'Your own copy' : `Installed ${esc(g.installed.tag)}`}</span><button class="btn-link" data-act="open-folder">Open folder</button><button class="btn-link danger" data-act="uninstall">${g.installed.manual ? 'Remove from Cartridge' : 'Uninstall'}</button>` : ''}
         ${g.installed && !g.inSteam ? '<button class="btn-link steam" data-act="add-steam">＋ Add to Steam</button>' : ''}
         ${g.inSteam ? '<span class="in-steam">✓ In Steam</span><button class="btn-link danger" data-act="remove-steam">Remove from Steam</button>' : ''}
         ${g.custom ? '<button class="btn-link danger" data-act="remove-custom">Remove from shelf</button>' : ''}
@@ -778,7 +885,8 @@ function renderInfo() {
         <p style="margin-top:10px;font-size:12.5px">${esc(kindExplained(g.kind))}</p>
       </section>
 
-      <section class="info-sec"><h3>What you need</h3>
+      <section class="info-sec"><h3>What you need <button class="help-q" data-help-tip="${g.needsFiles ? 'files' : 'roms'}" title="Help">?</button></h3>
+        ${g.needsFiles || g.howToGet === 'build' || g.sourceOnly ? `<p class="callout" style="margin:0 0 10px;font-size:13px">${g.howToGet === 'build' || g.sourceOnly ? '<b>Build it yourself:</b> there\'s no ready-made download. Build it from the project\'s instructions, then click <b>Add your copy</b>. ' : ''}${g.needsFiles ? '<b>Needs your game files:</b> this port wants files taken from your own console or disc (extracted game folders, sometimes keys), not just a ROM.' : ''} <button class="btn-link" data-help-go="${g.howToGet === 'build' || g.sourceOnly ? 'own' : 'files'}">How this works</button></p>` : ''}
         ${facts([
           ['Your ROM', m ? m.label : asksForRom(g) ? 'Optional: the game asks for it' : 'Not added yet', m ? m.level : asksForRom(g) ? '' : 'warn'],
           m ? ['Check', m.reason, m.level] : null,
@@ -807,10 +915,11 @@ function renderInfo() {
       <div class="info-links">
         <button class="btn-link" data-act="pick-cover" title="Or drop a picture onto the window">Change cover</button>
         ${g.customCover ? '<button class="btn-link" data-act="reset-cover">Automatic cover</button>' : ''}
+        <button class="btn-link fav-btn${g.favorite ? ' on' : ''}" data-act="favorite">${g.favorite ? '★ Favorite' : '☆ Add to favorites'}</button>
         <button class="btn-link" data-act="open-repo">Project page</button>
         ${g.site ? '<button class="btn-link" data-act="open-site">Website</button>' : ''}
         ${g.release && g.release.url ? '<button class="btn-link" data-act="open-notes">Full release notes</button>' : ''}
-        ${g.installed ? '<button class="btn-link" data-act="open-folder">Open game folder</button><button class="btn-link danger" data-act="uninstall">Uninstall</button>' : ''}
+        ${g.installed ? `<button class="btn-link" data-act="open-folder">Open game folder</button><button class="btn-link danger" data-act="uninstall">${g.installed.manual ? 'Remove from Cartridge' : 'Uninstall'}</button>` : ''}
         ${g.installed && !g.inSteam ? '<button class="btn-link steam" data-act="add-steam">＋ Add to Steam</button>' : ''}
         ${g.inSteam ? '<button class="btn-link danger" data-act="remove-steam">Remove from Steam</button>' : ''}
       </div>
@@ -1072,29 +1181,31 @@ let romsLimit = 300;
 let lastRomsSig = '';
 function renderRoms() {
   // state updates arrive often; only redraw the list when something on it changed
-  const sig = [S.roms.length, S.scanning, (S.settings.romFolders || []).join('|'), romsLimit, S.roms.filter((r) => r.customCover).length, S.roms.slice(0, romsLimit).filter((r) => r.cover).length].join('#');
+  const missing = S.roms.filter((r) => r.missing).length;
+  const sig = [S.roms.length, S.scanning, missing, (S.settings.romFolders || []).join('|'), romsLimit, S.roms.filter((r) => r.customCover).length, S.roms.slice(0, romsLimit).filter((r) => r.cover).length].join('#');
   if (sig === lastRomsSig && $('#view .rom-drop')) return;
   lastRomsSig = sig;
   const shown = S.roms.slice(0, romsLimit);
   const rows = shown.map((r) => {
     const unlocks = S.games.filter((g) => g.romMatch && g.romMatch.romId === r.id);
     const sys = S.systems[r.system] || {};
-    return `<div class="row rom-row">
+    return `<div class="row rom-row${r.missing ? ' is-missing' : ''}">
       <div class="rom-art" data-cover-kind="rom" data-ref="${esc(r.id)}" data-file="${esc(r.cover || '')}" style="--c:${sys.color || '#c8161d'}"><span>${esc(sys.short || '')}</span></div>
       <span class="dot ${r.datName ? 'ok' : 'warn'}" title="${r.datName ? 'Verified against No-Intro' : 'Unverified dump'}"></span>
       <div><div class="name">${esc(r.datName || r.internalName || r.originalName)}</div>
-        <div class="sub">${esc(sys.name || r.system)} · ${esc(fmtBytes(r.size))}${r.format && r.format !== 'z64' && r.system === 'n64' ? ` · converted from .${esc(r.format)}` : ''}</div></div>
+        <div class="sub">${r.missing ? '<b class="missing-tag" title="The file was moved, deleted, or is on a drive that isn\'t connected">File missing</b> · ' : ''}${esc(sys.name || r.system)} · ${esc(fmtBytes(r.size))}${r.format && r.format !== 'z64' && r.system === 'n64' ? ` · converted from .${esc(r.format)}` : ''}</div></div>
       <div class="tags">${unlocks.length ? unlocks.map((g) => `<span class="tag">${esc(g.port)}</span>`).join('') : '<span class="sub">No matching port yet</span>'}</div>
       <div class="inline"><button class="btn-link" data-rom-cover="${esc(r.id)}" title="Use your own picture as this ROM's cover">Cover</button>${r.customCover ? `<button class="btn-link" data-rom-cover-reset="${esc(r.id)}" title="Go back to the automatic cover">Auto</button>` : ''}<button class="btn-link" data-rom-reveal="${esc(r.id)}">Show</button><button class="btn-link danger" data-rom-remove="${esc(r.id)}">Remove</button></div>
     </div>`;
   }).join('');
   $('#view').innerHTML = `<div class="panel">
-    ${panelHead('My ROMs', 'Everything you add is checked, converted to .z64 where needed, and matched to the ports that use it.')}
+    ${panelHead('My ROMs', 'Everything you add is checked and matched to the ports that use it. Your ROM files stay where they are; Cartridge never copies your collection.')}
     <div class="rom-drop">
       <p><b>Point Cartridge at your ROM folder</b>It searches every subfolder and zip, matches each ROM to its game, and checks the folder again every time it starts.</p>
       <button class="btn3d small cyan" data-act="add-folder">+ Add a folder</button>
       <button class="btn3d small purple" data-act="pick-files">Choose files</button>
     </div>
+    ${missing ? `<div class="callout warn-callout"><b>${missing.toLocaleString()} ROM${missing > 1 ? 's\'' : '\'s'} file${missing > 1 ? 's are' : ' is'} missing.</b> ${missing > 1 ? 'They were' : 'It was'} moved, deleted, or ${missing > 1 ? 'are' : 'is'} on a drive that isn't connected. If you moved them, add the new folder and Cartridge finds them again. <button class="btn-link" data-act="forget-missing">Remove missing from the list</button> <button class="help-q" data-help-tip="setup" title="Help">?</button></div>` : ''}
     ${(S.settings.romFolders || []).length ? `<div class="folders">
       <div class="folders-head"><b>Watched folders</b><button class="btn-link" data-act="rescan">${S.scanning ? 'Scanning…' : 'Rescan now'}</button></div>
       ${S.settings.romFolders.map((f) => `<div class="folder-row"><span class="folder-ico"></span><span class="folder-path">${esc(f)}</span><button class="btn-link" data-open-path="${esc(f)}">Open</button><button class="btn-link danger" data-folder-remove="${esc(f)}">Stop watching</button></div>`).join('')}
@@ -1108,12 +1219,24 @@ function renderRoms() {
 // "Find more": browse the community catalog of ports, plus a GitHub search for anything brand new.
 let discoverResults = null;
 let communityData = null; // { source, items }
+let discoverSeen = false; // Find more opened this session (what's "new" is counted from the visit before)
 let communityError = null;
-const disc = { q: '', system: null, kind: null, limit: 60 };
+const disc = { q: '', system: null, kind: null, get: null, limit: 60 };
+// How you get a port running, from the Find more lists: tags of [label, tooltip, class]
+function getTags(c) {
+  const tags = [];
+  if (c.get === 'download') tags.push(['Download', 'Has a release Cartridge can install.', 'dl']);
+  if (c.get === 'build') tags.push(['Build it yourself', "No release to download: you build it from the project's instructions, then use Add your copy. See Help → Games you build yourself.", 'build']);
+  if (c.needsFiles) tags.push(['Needs game files', 'Needs files from your own console or disc (extracted game files, sometimes keys), not just a ROM. See Help → Games that need your game files.', 'files']);
+  return tags;
+}
 
 async function loadCommunity(force = false) {
   communityError = null;
   try { communityData = await api.communityList(force); } catch (e) { communityError = e.message; }
+  const fresh = communityData ? communityData.items.filter((c) => c.isNew).length : 0;
+  const badge = $('#c-new');
+  if (badge) { badge.textContent = fresh ? `${fresh} new` : ''; badge.hidden = !fresh; }
   if (ui.view === 'discover') renderDiscoverList();
 }
 
@@ -1123,8 +1246,9 @@ function communityFiltered() {
   return communityData.items.filter((c) => {
     if (disc.system && c.system !== disc.system) return false;
     if (disc.kind && KIND_GROUP(c.kind) !== disc.kind) return false;
+    if (disc.get === 'new' ? !c.isNew : disc.get && c.get !== disc.get) return false;
     if (!words.length) return true;
-    const hay = `${c.name} ${c.project} ${c.repo} ${c.tags.join(' ')} ${(S.systems[c.system] || {}).name || ''}`.toLowerCase();
+    const hay = `${c.name} ${c.project} ${c.repo} ${c.tags.join(' ')} ${c.status || ''} ${(S.systems[c.system] || {}).name || ''}`.toLowerCase();
     return words.every((w) => hay.includes(w));
   });
 }
@@ -1132,7 +1256,7 @@ function communityFiltered() {
 function renderDiscover() {
   $('#view').innerHTML = `<div class="panel wide">
     ${panelHead('Find more games', '')}
-    <p class="disc-sub">Decomp and recomp ports for every console, from the <button class="btn-link" data-url="${esc((communityData && communityData.source) || 'https://github.com/tgeorgiadis/quiver-community-app-catalog')}">community catalog</button>. Add one to your shelf, then install it like any other game.</p>
+    <p class="disc-sub">Decomp and recomp ports for every console, from the <button class="btn-link" data-url="${esc((communityData && communityData.source) || 'https://github.com/tgeorgiadis/quiver-community-app-catalog')}">Quiver community catalog</button> and <button class="btn-link" data-url="https://recompendium.com/en/">Recompendium</button> (CC BY-SA 4.0). Add one to your shelf, then install it like any other game. Newer ports, especially Switch, Wii U and PS4 ones, often have no download yet or need files from your own console: the label on each card says which. <button class="help-q" data-help-tip="find" title="What the labels mean">?</button></p>
     <div class="disc-bar">
       <label class="search disc-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M16 16l5 5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
         <input id="disc-filter" placeholder="Filter: game, console or team" value="${esc(disc.q)}" autocomplete="off"></label>
@@ -1151,6 +1275,7 @@ function renderDiscover() {
       <div id="gh-results">${ghResultsHtml()}</div>
     </div>
   </div>`;
+  if (!discoverSeen) { discoverSeen = true; guard(() => api.discoverVisited()); }
   if (!communityData && !communityError) loadCommunity();
   renderDiscoverList();
 }
@@ -1184,6 +1309,7 @@ function renderDiscoverList() {
   for (const c of all) bySys[c.system] = (bySys[c.system] || 0) + 1;
   const sysOrder = Object.keys(S.systems).filter((id) => bySys[id]);
   chipsEl.innerHTML = showChips(TYPES, disc.kind, (id) => all.filter((c) => (!disc.system || c.system === disc.system) && (!id || KIND_GROUP(c.kind) === id)).length, 'data-disc-type')
+    + `<span class="get-chips" role="group" aria-label="How to get it">${[['', 'Any'], ...(all.some((c) => c.isNew) ? [['new', '✦ New']] : []), ['download', 'Download'], ['build', 'Build it yourself']].map(([id, label]) => `<button class="chip${(disc.get || '') === id ? ' active' : ''}${id === 'new' ? ' new-chip' : ''}" data-disc-get="${id}">${label}<span class="n">${all.filter((c) => (!id || (id === 'new' ? c.isNew : c.get === id)) && (!disc.system || c.system === disc.system) && (!disc.kind || KIND_GROUP(c.kind) === disc.kind)).length}</span></button>`).join('')}</span>`
     + '<span class="show-break"></span>' + `<button class="chip${!disc.system ? ' active' : ''}" data-disc-system="">All<span class="n">${all.length}</span></button>`
     + sysOrder.map((id) => `<button class="chip${disc.system === id ? ' active' : ''}" data-disc-system="${id}" style="--pc:${S.systems[id].color}"><span class="pip"></span>${esc(S.systems[id].short)}<span class="n">${bySys[id]}</span></button>`).join('')
 ;
@@ -1193,9 +1319,11 @@ function renderDiscoverList() {
   listEl.innerHTML = items.length
     ? `<div class="cgrid">${shown.map((c) => {
         const sys = S.systems[c.system] || {};
-        return `<div class="ccard" style="--c:${sys.color || '#c8161d'}">
-          <div class="ccard-art" data-cover-kind="title" data-system="${esc(c.system)}" data-title="${esc(c.name)}">${c.icon ? `<img class="icon-img" src="${esc(c.icon)}" alt="" loading="lazy">` : ''}<span class="sys-tag">${esc(sys.short || '')}</span></div>
-          <div class="ccard-text"><b>${esc(c.name)}</b><span>${esc(c.project)}</span><em><span class="type-dot t-${typeOf(c.kind)[3]}"></span>${esc(typeOf(c.kind)[4].charAt(0) + typeOf(c.kind)[4].slice(1).toLowerCase())} · ${esc(c.repo.split('/')[0])}</em></div>
+        const tip = [c.desc, c.needs && `Needs: ${c.needs}`].filter(Boolean).join('\n\n');
+        const how = getTags(c);
+        return `<div class="ccard" style="--c:${sys.color || '#c8161d'}"${tip ? ` title="${esc(tip)}"` : ''}>
+          ${c.isNew ? '<span class="new-badge" title="Added to the lists since your last visit">NEW</span>' : ''}<div class="ccard-art" data-cover-kind="title" data-system="${esc(c.system)}" data-title="${esc(c.name)}">${c.icon ? `<img class="icon-img" src="${esc(c.icon)}" alt="" loading="lazy">` : ''}<span class="sys-tag">${esc(sys.short || '')}</span></div>
+          <div class="ccard-text"><b>${esc(c.name)}</b><span>${esc(c.project)}</span><em><span class="type-dot t-${typeOf(c.kind)[3]}"></span>${esc(typeOf(c.kind)[4].charAt(0) + typeOf(c.kind)[4].slice(1).toLowerCase())} · ${esc(c.repo.split('/')[0])}${c.status ? ` · <span class="ccard-status${/early/i.test(c.status) ? ' early' : ''}">${esc(c.status)}</span>` : ''}</em>${how.length ? `<span class="get-tags">${how.map(([l, tip, cls]) => `<i class="get-tag get-${cls}" title="${esc(tip)}">${esc(l)}</i>`).join('')}</span>` : ''}</div>
           ${c.onShelf ? `<button class="btn3d small lime" data-goto="${esc(c.onShelf)}">✓ On shelf</button>` : `<button class="btn3d small" data-add-community="${esc(c.key)}">+ Add</button>`}
         </div>`;
       }).join('')}</div>${items.length > shown.length ? `<div style="text-align:center;margin-top:16px"><button class="btn3d purple" data-act="disc-more">Show ${Math.min(60, items.length - shown.length)} more of ${items.length - shown.length}</button></div>` : ''}`
@@ -1231,13 +1359,14 @@ function renderSettings() {
     <div class="form">
       <label class="field"><span>Library folder</span>
         <div class="inline"><input value="${esc(s.libraryDir)}" readonly><button class="btn3d small purple" data-act="pick-libdir">Change</button><button class="btn-link" data-act="open-lib">Open</button></div>
-        <small>Games install to Games\\, ROMs are kept in ROMs\\. Games you've already installed stay where they are.</small></label>
+        <small>Games install into its Games folder. Your ROMs stay where they are; this folder only holds a converted copy when a game needs one. Games you've already installed stay where they are.</small></label>
       <label class="field"><span>GitHub token (optional)</span>
         <div class="inline"><input id="set-token" type="password" placeholder="ghp_…" value="${esc(s.githubToken)}"><button class="btn3d small purple" data-act="save-token">Save</button></div>
         <small>Without a token GitHub allows 60 checks an hour. A classic token with no scopes raises that to 5,000.</small></label>
       <label class="field"><span>Extra catalog URL (optional)</span>
         <div class="inline"><input id="set-catalog" placeholder="https://raw.githubusercontent.com/you/list/main/games.json" value="${esc(s.extraCatalogUrl)}"><button class="btn3d small purple" data-act="save-catalog">Save</button></div>
         <small>A games.json in the same format as the built-in catalog. Use it to share a list with friends.</small></label>
+      <div class="field" id="appearance"><span>Colors</span>${themeSettingsHtml()}</div>
       <div class="field"><span>Background</span>
         <div class="bg-row">
           <div class="bg-thumb" style="${s.backgroundImage ? `background-image:url('${fileUrl(s.backgroundImage).replace(/'/g, '%27')}')` : ''}">${s.backgroundImage ? '' : '<em>90s sunset (default)</em>'}</div>
@@ -1262,6 +1391,9 @@ function renderSettings() {
         <div id="pad-live" class="pad-live"></div>
         <div id="pad-setup" class="pad-setup" hidden></div>
         <small>Xbox controllers work straight away. PlayStation, Switch Pro, 8BitDo and other controllers work too; if one does the wrong thing, use <b>Set up buttons</b> and press each button when asked. If Steam is open and the controller moves the mouse pointer instead, that's Steam's desktop controller layout: change it in Steam → Settings → Controller, or close Steam while using Cartridge.</small></div>
+      <div class="field"><span>ROM copies</span>
+        <div id="rom-copies" class="sub">Checking…</div>
+        <small>Cartridge uses your ROMs where they are and never copies your collection. A copy is only made for a game that needs a different format (for example a .v64 converted to .z64), and only for that game's ROM.</small></div>
       <div class="field"><span>Steam</span>
         <div class="inline"><button class="btn3d small purple" data-act="steam-all">Add all installed games to Steam</button></div>
         <small>Each game appears in your Steam library as a non-Steam game with box art, and works with Big Picture and Steam Input. Steam closes for a moment while games are added.</small></div>
@@ -1269,10 +1401,42 @@ function renderSettings() {
         <div class="inline"><input type="checkbox" id="set-meta"${s.showMetacritic ? ' checked' : ''}><small>Show the Metascore in each game's info panel. Scores not in the catalog are looked up on metacritic.com. Off unless you turn it on.</small></div></label>
       <label class="field toggle"><span>Cartridge updates</span>
         <div class="inline"><input type="checkbox" id="set-updates"${s.checkUpdates === false ? '' : ' checked'}><small>Tell me when a new version of Cartridge is out (checks GitHub twice a day)</small></div></label>
-      <p class="about-ver">Cartridge <b>v${esc(S.version || '')}</b> · <button class="btn-link" data-open-path="${esc(S.changelog || '')}">What's new</button> · <button class="btn-link" data-view-go="about">About &amp; credits</button>${(S.links || {}).kofi ? ` · <button class="btn-link" data-url="${esc(S.links.kofi)}">♥ Support on Ko-fi</button>` : ''}</p>
+      <p class="about-ver">Cartridge <b>${esc(verLabel())}</b> <small>(build ${esc(S.version || '')})</small> · <button class="btn-link" data-open-path="${esc(S.changelog || '')}">What's new</button> · <button class="btn-link" data-view-go="about">About &amp; credits</button>${(S.links || {}).kofi ? ` · <button class="btn-link" data-url="${esc(S.links.kofi)}">♥ Support on Ko-fi</button>` : ''}</p>
       <div class="callout">Cartridge never downloads ROMs or game data. It installs open-source ports from their official GitHub releases and uses ROMs you dump from games you own.</div>
     </div>
   </div>`;
+}
+
+const fmtSize = (n) => (n >= 1e9 ? `${(n / 1e9).toFixed(1)} GB` : `${Math.max(1, Math.round(n / 1e6))} MB`);
+async function loadRomCopies() {
+  const box = $('#rom-copies');
+  if (!box) return;
+  const c = await api.romCopies().catch(() => null);
+  if (!$('#rom-copies')) return;
+  if (!c) { box.textContent = ''; return; }
+  box.innerHTML = c.count
+    ? `<b>${c.count.toLocaleString()} ROMs</b> are still stored as copies made by an older version (${fmtSize(c.bytes)}). Their originals weren't found in a watched ROM folder. <button class="btn-link danger" data-act="remove-rom-copies">Remove copies</button>`
+    : `No ROM copies.${c.freed ? ` ${fmtSize(c.freed)} was freed by removing old copies.` : ''}`;
+}
+
+// ---------------------------------------------------------------- colors (Settings)
+const swatch = (c) => `<span class="sw" style="background:${c.magenta}"></span><span class="sw" style="background:${c.hot}"></span><span class="sw" style="background:${c.gold}"></span><span class="sw" style="background:${c.cyan}"></span>`;
+function themeSettingsHtml() {
+  const t = S.settings.theme || { preset: 'cartridge' };
+  const cur = window.themeColors(t);
+  const presets = window.THEMES.map((x) => `<button class="theme-chip${t.preset === x.id ? ' on' : ''}" data-theme="${x.id}" title="${esc(x.name)}"><span class="sws">${swatch(x.colors)}</span>${esc(x.name)}</button>`).join('');
+  const custom = `<button class="theme-chip${t.preset === 'custom' ? ' on' : ''}" data-theme="custom" title="Pick your own colors"><span class="sws">${swatch(cur)}</span>Custom</button>`;
+  const pickers = t.preset === 'custom' ? `<div class="theme-custom">${window.THEME_KEYS.map(([k, label, tip]) => `<label class="color-pick" title="${esc(tip)}"><input type="color" data-theme-color="${k}" value="${esc(/^#[0-9a-f]{6}$/i.test(cur[k] || '') ? cur[k] : '#888888')}"><span><b>${esc(label)}</b><small>${esc(tip)}</small></span></label>`).join('')}</div>
+    <div class="inline"><button class="btn-link" data-act="theme-reset">Start again from ${esc((window.THEMES.find((x) => x.id === t.base) || window.THEMES[0]).name)}</button></div>` : '';
+  return `<div class="theme-row">${presets}${custom}</div>${pickers}<small>Pick a color theme, or Custom to choose each color yourself. Changes show straight away.</small>`;
+}
+async function setTheme(theme) {
+  S.settings.theme = theme;
+  applyBackground();
+  const box = $('#appearance');
+  if (box) box.innerHTML = `<span>Colors</span>${themeSettingsHtml()}`;
+  clearTimeout(setTheme.t);
+  setTheme.t = setTimeout(() => guard(() => api.settings({ theme })), 250);
 }
 
 // ---------------------------------------------------------------- render
@@ -1285,8 +1449,9 @@ function render() {
     renderShelf();
   } else if (ui.view === 'roms') renderRoms();
   else if (ui.view === 'discover') { if (!$('#disc-form')) renderDiscover(); }
-  else if (ui.view === 'settings') { if (!$('#set-token')) renderSettings(); }
+  else if (ui.view === 'settings') { if (!$('#set-token')) { renderSettings(); loadRomCopies(); } }
   else if (ui.view === 'about') { if (!$('#about-page')) renderAbout(); else refreshAboutUpdate(); }
+  else if (ui.view === 'help') { if (!$('#help-page')) renderHelp(); }
   renderDetail();
   if (pad.connected) updatePadHints();
 }
@@ -1311,6 +1476,11 @@ function showRomReport(report, isScan = false) {
   const added = report.filter((r) => r.status === 'added');
   const dup = report.filter((r) => r.status === 'duplicate').length;
   const bad = report.filter((r) => r.status === 'error');
+  const relinked = report.filter((r) => r.status === 'relinked').length;
+  const forgot = report.filter((r) => r.status === 'forgotten').reduce((n, r) => n + r.count, 0);
+  if (relinked) toast(`Found ${relinked.toLocaleString()} ROM${relinked > 1 ? 's' : ''} in a new place`, 'Cartridge now uses your own files for them.', 'ok');
+  if (forgot) toast(`${forgot.toLocaleString()} missing ROM${forgot > 1 ? 's' : ''} removed from the list`, 'Their files are gone from your watched folders. Your other files weren\'t touched.');
+  report = report.filter((r) => r.status !== 'relinked' && r.status !== 'forgotten');
   if (isScan || added.length > 4) {
     const unlocks = new Set(added.flatMap((r) => r.unlocks));
     if (added.length) toast(`Found ${added.length} new ROM${added.length > 1 ? 's' : ''}!`, unlocks.size ? `Unlocked ${unlocks.size} game${unlocks.size > 1 ? 's' : ''}: ${[...unlocks].slice(0, 6).join(', ')}${unlocks.size > 6 ? '…' : ''}` : 'None of them match a game in the catalog yet.', 'ok');
@@ -1327,12 +1497,34 @@ function showRomReport(report, isScan = false) {
   if (!report.length) toast('No ROMs found', 'Cartridge recognises games for every Nintendo, Sega, Sony and Xbox console up to Switch, plus PC Engine, Neo Geo, Atari and more: cartridge ROMs, disc images (.cue/.bin, .chd, .iso, .gdi), Switch .nsp/.xci, dumped game folders, and arcade .zip sets (CPS1/2/3, Neo Geo, NAOMI and more).', 'warn');
 }
 
-async function onAction(act, g) {
+/** Before an update: what changed, so you can decide. */
+function showUpdateNotes(g) {
+  const notes = cleanNotes(g.release && g.release.notes);
+  const m = $('#modal');
+  m.innerHTML = `<div class="modal tip" role="dialog" aria-modal="true">
+    <div class="help-topic">
+      <h2>Update ${esc(g.port)}?</h2>
+      <p class="lead">${esc(g.installed.tag)} → <b>${esc(g.release.tag)}</b>${g.release.published ? ` · released ${esc(fmtDate(g.release.published))}` : ''}. Your saves are backed up first and kept.</p>
+      ${notes ? `<p style="margin:0 0 6px;color:#fff;font-weight:800">What's new</p><div class="notes">${esc(notes.slice(0, 2400))}${notes.length > 2400 ? '…' : ''}</div>` : '<p class="sub">The project didn\'t write any notes for this version.</p>'}
+      ${g.release.url ? '<button class="btn-link" data-act="open-notes" style="margin-top:8px">Full release notes on GitHub</button>' : ''}
+    </div>
+    <div class="modal-actions"><button class="btn3d pink" data-update-go="${esc(g.id)}">Update now</button><button class="btn-link" data-tip-close="1">Not now</button></div>
+  </div>`;
+  m.hidden = false;
+  setTimeout(() => { const b = m.querySelector('[data-update-go]'); if (b) b.focus(); }, 30);
+}
+
+async function onAction(act, g, opts = {}) {
   switch (act) {
+    case 'favorite': await guard(() => api.setFavorite(g.id, !g.favorite)); break;
     case 'install': {
+      if (g.updateAvailable && !opts.confirmed && g.installed) { showUpdateNotes(g); break; }
       const res = await guard(() => api.install(g.id));
       if (res && res.ok) toast(`${g.port} is installed!`, g.romMatch ? 'Hit Play to start.' : asksForRom(g) ? 'Hit Play. The game asks for your ROM the first time.' : 'Load its ROM, then hit Play.', 'ok');
-      else if (res && res.error) toast(`Couldn't install ${g.port}`, res.error, 'bad');
+      else if (res && res.error) {
+        const folder = `${S.dirs.games}${isMac() || S.platform === 'linux' ? '/' : '\\'}${g.id}`;
+        toast(`Couldn't install ${g.port}`, res.error, 'bad', [['Open folder', () => api.openPath(folder)]]);
+      }
       break;
     }
     case 'cancel': await guard(() => api.cancel(g.id)); break;
@@ -1352,6 +1544,11 @@ async function onAction(act, g) {
     case 'uninstall': await guard(() => api.uninstall(g.id)); break;
     case 'open-folder': await guard(() => api.openFolder(g.id)); break;
     case 'open-repo': api.openUrl(`https://github.com/${g.repo}`); break;
+    case 'link-exe': {
+      const linked = await guard(() => api.linkExe(g.id));
+      if (linked) toast(`${g.port} added. Press Play to start it.`);
+      break;
+    }
     case 'pick-cover': await guard(() => api.pickCover('game', g.id)); break;
     case 'reset-cover': await guard(() => api.resetCover('game', g.id)); break;
     case 'open-site': api.openUrl(g.site); break;
@@ -1398,12 +1595,31 @@ document.addEventListener('click', async (e) => {
     return;
   }
   if (t.dataset.actWelcome) return closeWelcome(t.dataset.actWelcome === 'about' ? 'about' : null);
+  if (t.dataset.tipClose) return closeTip();
+  if (t.dataset.theme) {
+    const cur = S.settings.theme || { preset: 'cartridge' };
+    if (t.dataset.theme !== 'custom') return setTheme({ preset: t.dataset.theme });
+    if (cur.preset === 'custom') return undefined;
+    return setTheme({ preset: 'custom', base: cur.preset || 'cartridge', custom: {} });
+  }
+  if (t.dataset.updateGo) { closeTip(); const g = S.games.find((x) => x.id === t.dataset.updateGo); return g ? onAction('install', g, { confirmed: true }) : undefined; }
+  if (t.dataset.helpTip) return showTip(t.dataset.helpTip);
+  if (t.dataset.helpGo) return openHelp(t.dataset.helpGo);
+  if (t.dataset.setupFix) {
+    t.disabled = true; t.textContent = 'Working…';
+    const fix = t.dataset.setupFix;
+    const r = await guard(() => (fix === 'forget-missing' ? api.forgetMissing() : fix === 'remove-copies' ? api.removeRomCopies() : api.fixSetup(fix)));
+    if (r != null) toast('Done', '', 'ok');
+    return runSetupCheck();
+  }
+  if (t.dataset.helpTopic) { helpUi.topic = t.dataset.helpTopic; renderHelpBody(); $('#view').scrollTop = 0; return; }
+  if (t.dataset.helpAct) { closeTip(); return t.dataset.helpAct === 'log' ? guard(() => api.openLog()) : setView(t.dataset.helpAct); }
   if (t.dataset.actAbout === 'log') return guard(() => api.openLog());
   if (t.dataset.actAbout === 'check') {
     t.disabled = true; t.textContent = 'Checking…';
     const r = await guard(() => api.checkAppUpdate(true));
     t.disabled = false; t.textContent = 'Check now';
-    if (r && !r.available) { const st = $('#update-status'); if (st) st.textContent = r.skipped === 'no-releases' ? 'No releases published yet.' : `You're on the latest version (${S.version}).`; }
+    if (r && !r.available) { const st = $('#update-status'); if (st) st.textContent = r.skipped === 'no-releases' ? 'No releases published yet.' : `You're on the latest version (${verLabel()}).`; }
     return;
   }
   if (t.dataset.view) return setView(t.dataset.view);
@@ -1422,6 +1638,7 @@ document.addEventListener('click', async (e) => {
     return setView('shelf', k === 'system' ? { system: null } : k === 'filter' ? { filter: 'all' } : k === 'query' ? { query: '' } : {});
   }
   if (t.dataset.type != null) return setView('shelf', { kind: t.dataset.type || null });
+  if (t.dataset.discGet != null) { disc.get = t.dataset.discGet || null; disc.limit = 60; return renderDiscoverList(); }
   if (t.dataset.discType != null) { disc.kind = t.dataset.discType || null; disc.limit = 60; return renderDiscoverList(); }
   if (t.dataset.viewGo) return setView(t.dataset.viewGo);
   if (t.dataset.layout) { ui.layout = t.dataset.layout; saveViewPrefs(); $('#view').scrollTop = 0; return renderShelf(); }
@@ -1463,6 +1680,9 @@ document.addEventListener('click', async (e) => {
   if (act === 'pick-files') return showRomReport(await guard(() => api.pickRoms('files')));
   if (act === 'pick-folder') return showRomReport(await guard(() => api.pickRoms('folder')));
   if (act === 'add-folder') return addFolder();
+  if (act === 'theme-reset') { const cur = S.settings.theme || {}; return setTheme({ preset: 'custom', base: cur.base || 'cartridge', custom: {} }); }
+  if (act === 'check-setup') { if (!setupState.running) runSetupCheck(); return; }
+  if (act === 'forget-missing') { const n = await guard(() => api.forgetMissing()); if (n) toast(`Removed ${n.toLocaleString()} missing ROM${n > 1 ? 's' : ''} from the list`, '', 'ok'); return; }
   if (act === 'rescan') { t.textContent = 'Scanning…'; const r = await guard(() => api.scanRomFolders(true)); showRomReport(r || [], true); return render(); }
   if (act === 'pick-libdir') { await guard(() => api.pickLibraryDir()); return renderSettings(); }
   if (act === 'pick-backup-dir') { await guard(() => api.pickBackupDir()); return renderSettings(); }
@@ -1482,6 +1702,11 @@ document.addEventListener('click', async (e) => {
   if (act === 'pick-bg') { const p = await guard(() => api.pickBackground()); if (p) { toast('Background changed', '', 'ok'); renderSettings(); } return; }
   if (act === 'clear-bg') { await guard(() => api.clearBackground()); toast('Background reset to the 90s sunset'); return renderSettings(); }
   if (act === 'load-rom') return loadRomForSelected();
+  if (act === 'remove-rom-copies') {
+    const r = await guard(() => api.removeRomCopies());
+    if (r) toast(`Removed ${r.removed.toLocaleString()} copies`, `${fmtSize(r.freed)} freed.`, 'ok');
+    return loadRomCopies();
+  }
   if (act === 'rom-help' && ui.selected) {
     guideOpen[ui.selected] = true;
     openInfo(true);
@@ -1539,6 +1764,15 @@ document.addEventListener('submit', async (e) => {
 // The big game banner shrinks once you scroll down and grows back at the top.
 // Two thresholds (shrink past 60px, grow below 8px) plus the empty space under the last row
 // stop it flipping back and forth when the list is short.
+// Scrolling with the mouse or trackpad over the big game banner scrolls the games below it
+// (on a laptop screen the banner can fill most of the window, and it doesn't scroll itself)
+$('#detail').addEventListener('wheel', (e) => {
+  if (ui.view !== 'shelf' || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+  if (e.target.closest('select')) return;
+  e.preventDefault();
+  $('#view').scrollTop += e.deltaMode === 1 ? e.deltaY * 32 : e.deltaY;
+}, { passive: false });
+
 $('#view').addEventListener('scroll', () => {
   const top = $('#view').scrollTop;
   const on = document.body.classList.contains('compact');
@@ -1555,6 +1789,18 @@ document.addEventListener('input', (e) => {
     window.__dimSave = setTimeout(() => api.settings({ backgroundDim: Number(e.target.value) }), 300);
   }
   if (e.target.id === 'disc-filter') { disc.q = e.target.value; disc.limit = 60; renderDiscoverList(); }
+  if (e.target.id === 'help-q') { helpUi.q = e.target.value; renderHelpBody(); }
+  if (e.target.dataset && e.target.dataset.themeColor) {
+    // live while dragging; saved a moment after you stop
+    const cur = S.settings.theme || { preset: 'custom', base: 'cartridge' };
+    const theme = { ...cur, preset: 'custom', custom: { ...(cur.custom || {}), [e.target.dataset.themeColor]: e.target.value } };
+    S.settings.theme = theme;
+    window.applyTheme(theme);
+    applyBackground.themeSig = JSON.stringify(theme);
+    document.querySelectorAll('[data-theme="custom"] .sws').forEach((el) => { el.innerHTML = swatch(window.themeColors(theme)); });
+    clearTimeout(setTheme.t);
+    setTheme.t = setTimeout(() => guard(() => api.settings({ theme })), 300);
+  }
 });
 
 $('#search').addEventListener('input', (e) => {
@@ -1569,7 +1815,7 @@ $('#update-pill').addEventListener('click', () => { if (S.appUpdate) api.openUrl
 /** Keep the About page's update line current without re-rendering the credits. */
 function refreshAboutUpdate() {
   const st = $('#update-status');
-  if (st && S.appUpdate) st.innerHTML = `<b class="gold">Cartridge ${esc(S.appUpdate.version)} is out.</b>`;
+  if (st && S.appUpdate) st.innerHTML = `<b class="gold">A new Cartridge is out (build ${esc(S.appUpdate.version)}).</b>`;
 }
 $('#btn-load-rom').addEventListener('click', async () => showRomReport(await guard(() => api.pickRoms('files'))));
 
@@ -1600,11 +1846,11 @@ window.addEventListener('resize', () => updateRowArrows());
 
 // keyboard / controller-style navigation: left/right moves along the shelf, Enter plays or installs
 document.addEventListener('keydown', (e) => {
-  if (!$('#modal').hidden) { if (e.key === 'Escape') closeWelcome(null); return; }
+  if (!$('#modal').hidden) { if (e.key === 'Escape') { if ($('#modal .modal.tip')) closeTip(); else closeWelcome(null); } return; }
   if (e.key === 'Escape' && ui.infoOpen) { openInfo(false); return; }
   if (ui.view !== 'shelf' || /input|select|textarea/i.test(document.activeElement.tagName)) return;
   if (e.key === 'i' || e.key === 'I') { openInfo(!ui.infoOpen); return; }
-  if (/^[1-5]$/.test(e.key)) { setView('shelf', { kind: SHOW[+e.key - 1][0] || null }); return; }
+  if (/^[1-6]$/.test(e.key)) { setView('shelf', { kind: SHOW[+e.key - 1][0] || null }); return; }
   const dir = { ArrowRight: 'right', ArrowLeft: 'left', ArrowDown: 'down', ArrowUp: 'up' }[e.key];
   if (dir) {
     e.preventDefault();
@@ -1619,8 +1865,8 @@ document.addEventListener('keydown', (e) => {
 // ---------------------------------------------------------------- controller (Xbox / PlayStation / Switch Pro via the Gamepad API)
 // Standard mapping: 0 A/Cross, 1 B/Circle, 2 X/Square, 3 Y/Triangle, 4 LB, 5 RB, 6 LT, 7 RT, 8 View/Select, 9 Menu/Start, 12-15 D-pad.
 const pad = { held: {}, next: {}, connected: false };
-const TABS = ['shelf', 'roms', 'discover', 'settings'];
-const FILTERS = ['all', 'installed', 'ready', 'needs'];
+const TABS = ['shelf', 'roms', 'discover', 'settings', 'help'];
+const FILTERS = ['all', 'available', 'installed', 'ready', 'needs'];
 
 // Controllers report their buttons in one of two ways:
 // - the "standard" layout (Xbox, and most PlayStation / Switch Pro controllers on Windows): fixed button numbers
@@ -1836,7 +2082,18 @@ function panelPress(key) {
 function padPress(key) {
   if (!S) return;
   // the welcome note: A or B closes it
-  if (!$('#modal').hidden) { if (key === 'a' || key === 'b' || key === 'start') closeWelcome(null); return; }
+  if (!$('#modal').hidden) {
+    if ($('#modal .modal.tip')) { // a help pop-up: the D-pad moves between its buttons, A presses one, B closes it
+      const btns = [...$('#modal').querySelectorAll('button')];
+      const at = btns.indexOf(document.activeElement);
+      if (key === 'b' || key === 'start') closeTip();
+      else if (key === 'a') (at >= 0 ? btns[at] : btns[btns.length - 1]).click();
+      else if (['left', 'up', 'right', 'down'].includes(key) && btns.length) btns[(at + (key === 'left' || key === 'up' ? -1 : 1) + btns.length) % btns.length].focus();
+      return;
+    }
+    if (key === 'a' || key === 'b' || key === 'start') closeWelcome(null);
+    return;
+  }
   // A presses the button on a pop-up message that's waiting for an answer
   const toastBtn = [...document.querySelectorAll('[data-toast-action]')].pop();
   const g = S.games.find((x) => x.id === ui.selected);
@@ -1846,6 +2103,13 @@ function padPress(key) {
   if (key === 'rsUp' || key === 'rsDown') { $('#view').scrollBy({ top: key === 'rsUp' ? -160 : 160, behavior: 'smooth' }); return; }
   // on the Controller settings you're trying buttons out: only B (back) and the triggers (menus) do anything
   if (ui.view === 'settings' && !['b', 'lt', 'rt', 'up', 'down'].includes(key)) return;
+  // Help: left / right go through the topics, up / down scroll
+  if (ui.view === 'help' && (key === 'left' || key === 'right')) {
+    const list = helpMatches();
+    const i = list.findIndex((x) => x.id === helpUi.topic);
+    if (list.length) { helpUi.topic = list[(i + (key === 'left' ? -1 : 1) + list.length) % list.length].id; renderHelpBody(); $('#view').scrollTop = 0; }
+    return;
+  }
 
   switch (key) {
     case 'left': case 'right': if (ui.view === 'shelf') moveSelection(key); break;
@@ -1962,6 +2226,8 @@ window.addEventListener('drop', async (e) => {
 function fileUrl(p) { return 'file:///' + encodeURI(String(p).replace(/\\/g, '/')).replace(/#/g, '%23').replace(/\?/g, '%3F'); }
 function applyBackground() {
   if (!S) return;
+  const themeSig = JSON.stringify(S.settings.theme || null);
+  if (themeSig !== applyBackground.themeSig) { applyBackground.themeSig = themeSig; window.applyTheme(S.settings.theme); }
   const img = S.settings.backgroundImage;
   document.body.classList.toggle('custom-bg', !!img);
   const sky = document.querySelector('.sky');
@@ -1972,6 +2238,7 @@ function applyBackground() {
 api.onState((s) => { S = s; render(); });
 api.onCoverProgress && api.onCoverProgress(({ done, total }) => { const el = $('#cover-progress'); if (el) el.textContent = done < total ? `Checking ${done} of ${total}…` : ''; });
 api.onScanReport((r) => showRomReport(r, true));
+api.onNotice && api.onNotice((n) => { toast(n.title, n.body, n.kind || ''); if (ui.view === 'settings') loadRomCopies(); });
 api.onBackup((id, b) => {
   backupsCache.delete(id);
   const g = S && S.games.find((x) => x.id === id);
@@ -2003,7 +2270,14 @@ api.onJob((id, job) => {
   if (!progs.length && ui.selected === id) renderDetail();
 });
 
-api.state().then((s) => { S = s; render(); });
+api.state().then((s) => {
+  S = s;
+  // Mac: most ports are Windows-only, so start on the games that work here (the Status dropdown or Reset shows everything)
+  if (S.platform === 'darwin' && ui.filter === 'all') ui.filter = 'available';
+  render();
+  // the Find more tab says how many ports are new since your last visit (the list is cached for a day)
+  setTimeout(() => { if (!communityData) loadCommunity(); }, 8000);
+});
 
 // remember whether the reader opened or closed a game's dumping guide, so a refresh doesn't flip it back
 document.addEventListener('toggle', (e) => { const d = e.target; if (d.matches && d.matches('details[data-guide]')) guideOpen[d.dataset.guide] = d.open; }, true);

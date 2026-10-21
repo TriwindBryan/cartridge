@@ -1,13 +1,14 @@
 {
   "name": "cartridge-launcher",
   "productName": "Cartridge",
-  "version": "1.30.0",
+  "version": "1.45.0",
   "description": "A launcher for decompiled and recompiled retro game ports. Bring your ROMs, it does the rest.",
   "main": "main.js",
   "cartridge": {
     "kofi": "https://ko-fi.com/triwind",
     "repo": "TriwindBryan/cartridge",
-    "itch": ""
+    "itch": "",
+    "label": "Beta 0.0012"
   },
   "license": "MIT",
   "scripts": {
@@ -67,7 +68,7 @@
     },
     "msiProjectCreated": "build/msi-hook.js",
     "mac": {
-      "icon": "build/icon-mac.png",
+      "icon": "build/icon.icns",
       "category": "public.app-category.games",
       "target": [
         {
@@ -84,7 +85,8 @@
     },
     "dmg": {
       "artifactName": "Cartridge-${version}-${arch}.dmg",
-      "title": "Cartridge ${version}"
+      "title": "Cartridge ${version}",
+      "icon": "build/icon.icns"
     }
   },
   "author": "TriwindBryan",

@@ -37,7 +37,8 @@ function createWindow() {
   win = new BrowserWindow({
     width: 1440, height: 900, minWidth: 1000, minHeight: 640,
     backgroundColor: '#14161b',
-    title: `Cartridge ${app.getVersion().replace(/\.0$/, '')}`,
+    // the name people see ("Beta 0.0001"); the version number behind it keeps counting so installs and updates work
+    title: `Cartridge ${(require('./package.json').cartridge || {}).label || app.getVersion().replace(/\.0$/, '')}`,
     icon: path.join(__dirname, 'build', 'icon.png'),
     autoHideMenuBar: true,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true },
@@ -98,8 +99,32 @@ app.whenReady().then(async () => {
   handle('refresh', (force) => lib.refreshReleases({ force }));
   handle('install', (id) => lib.install(id));
   handle('cancel', (id) => lib.cancel(id));
+  handle('linkExe', async (id) => {
+    const g = lib.game(id);
+    const win32 = process.platform === 'win32';
+    const r = await dialog.showOpenDialog(win, {
+      title: `Where is your copy of ${g.port}?`,
+      buttonLabel: 'Use this',
+      properties: ['openFile'],
+      filters: win32 ? [{ name: 'Game or launch script', extensions: ['exe', 'bat', 'cmd'] }, { name: 'All files', extensions: ['*'] }] : [],
+    });
+    if (r.canceled || !r.filePaths[0]) return null;
+    const cur = lib.state.installed[id];
+    if (cur && !cur.manual) {
+      // Cartridge installed its own download earlier: swap it for the player's copy in one go
+      const { response } = await dialog.showMessageBox(win, {
+        type: 'question', buttons: ['Use my copy', 'Cancel'], defaultId: 0, cancelId: 1,
+        message: `Use your own copy of ${g.port}?`,
+        detail: `Cartridge will back up the saves in its downloaded copy (${cur.tag}), remove that download, and start your copy from now on. Nothing in your own folder is changed.`,
+      });
+      if (response !== 0) return null;
+      await lib.uninstall(id);
+    }
+    return lib.linkInstall(id, r.filePaths[0]);
+  });
   handle('uninstall', async (id) => {
     const g = lib.game(id);
+    if ((lib.state.installed[id] || {}).manual) { await lib.uninstall(id); return true; }
     const { response } = await dialog.showMessageBox(win, {
       type: 'warning', buttons: ['Uninstall', 'Keep it'], defaultId: 1, cancelId: 1,
       message: `Uninstall ${g.port}?`, detail: 'This deletes the game folder, including any saves and settings stored inside it. Your ROM stays in your library.',
@@ -132,6 +157,29 @@ app.whenReady().then(async () => {
   handle('checkAppUpdate', (force) => lib.checkAppUpdate({ force: !!force }));
   handle('credits', () => lib.credits());
   handle('romHelp', (id) => lib.romHelp(id));
+  handle('romCopies', () => lib.romCopies());
+  handle('checkSetup', () => lib.checkSetup());
+  handle('fixSetup', (fixId) => lib.fixSetup(String(fixId)));
+  handle('forgetMissing', async () => {
+    const n = lib.state.roms.filter((r) => r.missing).length;
+    if (!n) return 0;
+    const { response } = await dialog.showMessageBox(win, {
+      type: 'question', buttons: ['Remove from list', 'Cancel'], defaultId: 0, cancelId: 1,
+      message: `Remove ${n.toLocaleString()} missing ROM${n > 1 ? 's' : ''} from the list?`,
+      detail: "Their files are already gone (or on a drive that isn't connected). This only tidies Cartridge's list; no files are deleted. If they come back, a rescan finds them again.",
+    });
+    return response === 0 ? lib.forgetMissing() : null;
+  });
+  handle('removeRomCopies', async () => {
+    const info = await lib.romCopies();
+    if (!info.count) return { removed: 0, freed: 0 };
+    const { response } = await dialog.showMessageBox(win, {
+      type: 'warning', buttons: ['Remove copies', 'Cancel'], defaultId: 1, cancelId: 1,
+      message: `Remove ${info.count.toLocaleString()} ROM copies?`,
+      detail: "These copies were made by older versions of Cartridge, from ROMs that aren't in a watched ROM folder. Your own ROM files aren't touched. The ROMs disappear from My ROMs; add their folder again to bring them back.",
+    });
+    return response === 0 ? lib.removeRomCopies() : null;
+  });
   handle('pickBackground', async () => {
     const res = await dialog.showOpenDialog(win, { title: 'Choose a background image', properties: ['openFile'],
       filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'] }] });
@@ -291,6 +339,8 @@ app.whenReady().then(async () => {
   handle('discover', (q) => require('./src/core/github').discover(q, lib.state.settings.githubToken));
   handle('addUserGame', (entry) => lib.addUserGame(entry));
   handle('communityList', (force) => lib.communityList({ force }));
+  handle('discoverVisited', () => lib.discoverVisited());
+  handle('setFavorite', (id, on) => lib.setFavorite(id, !!on));
   handle('addCommunityGame', (key) => lib.addCommunityGame(key));
   handle('metascore', (id, force) => lib.metascore(id, { force }));
   // cover art
@@ -331,8 +381,35 @@ app.whenReady().then(async () => {
   lib.refreshReleases().then(() => log(`Checked ports for updates in ${((Date.now() - tr) / 1000).toFixed(1)}s`), (e) => log(`Checking ports for updates failed: ${e.message}`));
   // Pick up any ROMs added to the saved folders since last time.
   lib.on('scan', (on) => { if (win && !win.isDestroyed()) win.webContents.send('scan', on); });
+  const notice = (title, body, kind = 'ok') => { if (win && !win.isDestroyed()) win.webContents.send('notice', { title, body, kind }); };
+  const gb = (n) => (n >= 1e9 ? `${(n / 1e9).toFixed(1)} GB` : `${Math.max(1, Math.round(n / 1e6))} MB`);
   setTimeout(async () => {
-    const report = await lib.scanRomFolders().catch(() => []);
+    // updating from a version that copied every ROM: point at the originals and delete the copies (once)
+    if (!lib.state.romCopiesMigrated) {
+      const before = await lib.romCopies().catch(() => ({ count: 0 }));
+      if (before.count) notice(before.bytes ? 'Freeing up space' : 'Updating your ROM list', before.bytes
+        ? `Older versions of Cartridge kept a copy of ${before.count.toLocaleString()} ROMs (${gb(before.bytes)}). Cartridge now uses your ROMs where they are, and is removing the copies…`
+        : `Pointing ${before.count.toLocaleString()} ROMs at your own files instead of old copies. This takes a few minutes with a big collection…`, '');
+      const res = await lib.migrateRomCopies().catch((e) => {
+        log(`ROM copy clean-up failed: ${e.message}`);
+        if (e.code === 'ENOSPC') notice("Couldn't finish freeing up space", e.message, 'bad');
+        return null;
+      });
+      if (res) {
+        log(`ROM copy clean-up: ${res.relinked} relinked, ${res.freed} bytes freed, ${res.left.count} copies left`);
+        if (res.freed) notice(`Freed ${gb(res.freed)}`, `${res.relinked.toLocaleString()} ROMs now point at your own files instead of copies.${res.left.count ? ` ${res.left.count.toLocaleString()} copies are left (Settings → ROM copies).` : ''}`);
+        else if (res.left.count) notice('ROM copies', `${res.left.count.toLocaleString()} ROMs are still stored as copies (${gb(res.left.bytes)}). You can remove them in Settings → ROM copies.`, 'warn');
+      }
+    }
+    const report = await lib.scanRomFolders().catch((e) => {
+      log(`ROM scan failed: ${e.message}`);
+      if (e.code === 'ENOSPC') notice("Couldn't check all your ROMs", e.message, 'bad');
+      return [];
+    });
+    // a nearly full drive breaks installs, saves and Windows itself: say so plainly
+    for (const d of await lib.diskStatus().catch(() => [])) {
+      if (d.low) notice(`Your ${d.drive} is almost full`, `Only ${require('./src/core/disk').fmt(d.free)} is free. Installs and save backups may fail. Free up some space; Help → Check my setup shows what's using Cartridge's space.`, 'warn');
+    }
     const added = report.filter((r) => r.status === 'added');
     if (added.length && win && !win.isDestroyed()) win.webContents.send('scanReport', report);
   }, 1500);

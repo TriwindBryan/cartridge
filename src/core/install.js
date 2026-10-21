@@ -95,10 +95,64 @@ async function extractDmg(dmg, destDir) {
   }
 }
 
+/**
+ * Mac downloads are often a zip with a disk image inside (Ship of Harkinian: SoH-Mac.zip → SoH.dmg → soh.app),
+ * or a zipped app. When no .app is visible after unpacking, open those too, so the game ends up ready to play.
+ */
+async function expandNested(dir) {
+  if (process.platform !== 'darwin') return false;
+  let changed = false;
+  for (let round = 0; round < 2; round++) {
+    const items = await walk(dir, 0, [], { apps: true });
+    if (items.some((f) => f.app)) return changed;
+    const inner = items.filter((f) => !f.app && /\.(dmg|zip)$/i.test(f.full));
+    if (!inner.length) return changed;
+    for (const f of inner) {
+      const into = path.dirname(f.full);
+      if (/\.dmg$/i.test(f.full)) await extractDmg(f.full, into);
+      else await run('ditto', ['-x', '-k', f.full, into]);
+      await fsp.rm(f.full, { force: true });
+      changed = true;
+    }
+  }
+  return changed;
+}
+
 /** Mac: the downloaded game isn't marked as "from the internet" by us, but clear the flag anyway so it opens without a prompt. */
 async function clearQuarantine(dir) {
   if (process.platform !== 'darwin') return;
   await run('xattr', ['-dr', 'com.apple.quarantine', dir]).catch(() => {});
+}
+
+/** The files inside a zip/7z without unpacking it (for big archives). Returns [{ name, size }]. */
+async function listArchive(archive) {
+  const out = await new Promise((resolve, reject) => {
+    const tar = process.platform === 'win32' ? path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe') : 'tar';
+    const tryCmd = (cmd, args, next) => {
+      const p = spawn(cmd, args, { windowsHide: true });
+      let txt = '';
+      p.stdout.on('data', (d) => { txt += d; });
+      p.on('error', () => (next ? next() : reject(new Error('no archive lister'))));
+      p.on('close', (code) => (code === 0 ? resolve({ cmd, txt }) : next ? next() : reject(new Error(`${cmd} exited ${code}`))));
+    };
+    // bsdtar (Windows 10+, macOS) lists zip and 7z; unzip covers Linux zips
+    tryCmd(fs.existsSync(tar) || process.platform !== 'win32' ? tar : 'tar', ['-tvf', archive],
+      () => tryCmd('unzip', ['-Z', '-l', archive]));
+  });
+  const files = [];
+  for (const line of out.txt.split(/\r?\n/)) {
+    if (!line.trim() || line.startsWith('d')) continue;
+    if (out.cmd === 'unzip') {
+      // -rw-r--r--  3.0 unx  12345 bx  12345 defN 24-Oct-19 21:00 folder/name.3ds
+      const m = line.match(/^[-l][rwx-]{9}\s+\S+\s+\S+\s+(\d+)\s+\S+\s+\d+\s+\S+\s+\S+\s+\S+\s+(.+)$/);
+      if (m) files.push({ name: m[2], size: Number(m[1]) });
+    } else {
+      // -rw-r--r--  0 0      0   12345 Oct 19 21:00 folder/name.3ds
+      const m = line.match(/^[-l][rwx-]{9}\s+\S+\s+\S+\s+\S+\s+(\d+)\s+\S+\s+\S+\s+\S+\s+(.+)$/);
+      if (m) files.push({ name: m[2], size: Number(m[1]) });
+    }
+  }
+  return files;
 }
 
 /** If an archive extracted into a single wrapper folder, return that folder instead. */
@@ -166,4 +220,4 @@ async function findExecutable(dir, exeHint, platform = process.platform) {
   return cands.length ? cands[0].full : null;
 }
 
-module.exports = { download, extract, unwrap, mergeInto, findExecutable, walk, clearQuarantine, macHint };
+module.exports = { listArchive, download, extract, unwrap, mergeInto, findExecutable, walk, clearQuarantine, macHint, expandNested };

@@ -23,8 +23,9 @@
       <nav class="tabs" id="tabs">
         <button class="tab" data-view="shelf">Games <span class="count" id="c-all"></span></button>
         <button class="tab" data-view="roms">My ROMs <span class="count" id="c-roms"></span></button>
-        <button class="tab" data-view="discover">Find more</button>
+        <button class="tab" data-view="discover">Find more <span class="count new-count" id="c-new" hidden></span></button>
         <button class="tab" data-view="settings">Settings</button>
+        <button class="tab" data-view="help">Help</button>
       </nav>
       <label class="search">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M16 16l5 5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
@@ -53,6 +54,8 @@
   <div class="modal-back" id="modal" hidden></div>
 
   <div class="toasts" id="toasts" role="status"></div>
+  <script src="themes.js"></script>
+  <script src="help.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -20,9 +20,10 @@ const CART_EXT = {
 // Disc and modern formats with only one possible console: identified by name/header, never copied.
 const DISC_EXT = {
   '.gcm': 'gc', '.rvz': 'gc', '.ciso': 'gc', '.gcz': 'gc', '.wia': 'gc', '.wbfs': 'wii', // gc/wii decided by the disc header
-  '.wud': 'wiiu', '.wux': 'wiiu', '.wua': 'wiiu', '.rpx': 'wiiu',
+  '.wud': 'wiiu', '.wux': 'wiiu', '.wua': 'wiiu', '.rpx': 'wiiu', '.wuhb': 'wiiu', '.tmd': 'wiiu',
   '.nsp': 'switch', '.nsz': 'switch', '.xci': 'switch', '.xcz': 'switch',
   '.3ds': '3ds', '.cci': '3ds', '.cia': '3ds', '.cxi': '3ds', '.3dsx': '3ds',
+  '.zcci': '3ds', '.zcxi': '3ds', '.z3dsx': '3ds', '.zcia': '3ds', // Azahar's compressed (Z3DS) formats
   '.gdi': 'dreamcast', '.cdi': 'dreamcast',
   '.pbp': 'ps1', '.cso': 'psp', '.vpk': 'vita', '.pkg': 'ps3',
   '.xbe': 'xbox', '.xex': 'x360',
@@ -33,7 +34,7 @@ const ROM_EXTENSIONS = [...Object.keys(CART_EXT), ...Object.keys(DISC_EXT), ...S
 
 // Systems whose files are big: identified by name (plus serial where the header has one) and left where they are.
 const NAME_ONLY = new Set(['ps1', 'ps2', 'ps3', 'psp', 'vita', 'segacd', 'saturn', 'dreamcast', '3do', 'pcecd', 'neocd',
-  'xbox', 'x360', 'wiiu', 'switch', '3ds']);
+  'xbox', 'x360', 'wiiu', 'switch', '3ds', 'ps4', 'ps5', 'xone', 'xsx', 'switch2']);
 // File type the tidy copy in the ROM library gets.
 const STORE_EXT = { n64: '.z64', snes: '.sfc', nes: '.nes', genesis: '.md', a2600: '.a26' };
 
@@ -46,14 +47,34 @@ function systemForExtension(file) {
   if (SHARED_EXT.includes(ext)) return 'ps1';
   const base = path.basename(file).toLowerCase();
   if (base === 'param.sfo') return 'ps3';
+  if (base === 'param.json') return 'ps5';
+  if (base === 'microsoftgame.config' || base === 'appxmanifest.xml') return 'xone';
   if (base === 'meta.xml') return 'wiiu';
+  // Xbox 360 Games on Demand / Xbox Live Arcade: a file with no extension inside a content-type folder (00007000, 000D0000…)
+  if (!ext && /^[0-9a-f]{8}$/i.test(path.basename(path.dirname(file)))) return 'x360';
   return null;
+}
+
+/** Xbox 360 STFS package (Games on Demand, XBLA, DLC): { title, titleId, type } or null. */
+function stfsInfo(file) {
+  return withFile(file, (fd) => {
+    const h = readAt(fd, 0, 0x1700);
+    const magic = h.toString('latin1', 0, 4);
+    if (!['CON ', 'LIVE', 'PIRS'].includes(magic) || h.length < 0x491) return null;
+    // the display name is UTF-16 big-endian at 0x411 (English first)
+    const raw = Buffer.from(h.subarray(0x411, 0x411 + 0x80));
+    raw.swap16();
+    const title = raw.toString('utf16le').replace(/\0[\s\S]*$/, '').trim();
+    return { title, titleId: h.readUInt32BE(0x360).toString(16).toUpperCase().padStart(8, '0'), type: h.readUInt32BE(0x344) };
+  });
 }
 
 // ---- Folder name hints ------------------------------------------------------------
 // When a disc can't be told apart by its contents (.chd is compressed), the folder it sits in usually says
 // ("D:\ROMs\Sega Saturn\…", "Sony - PlayStation 2", "PS1"). Specific names come before general ones.
 const HINTS = [
+  [/switch ?2\b|\bnsw2\b|\bns2\b/, 'switch2'], [/\bps5\b|playstation ?5/, 'ps5'], [/\bps4\b|playstation ?4/, 'ps4'],
+  [/xbox ?series|series ?x|\bxsx\b|\bxss\b/, 'xsx'], [/xbox ?one|\bxb1\b|\bxbone\b/, 'xone'],
   [/\bswitch\b|\bnsw\b/, 'switch'], [/\bwii ?u\b/, 'wiiu'], [/\b3ds\b/, '3ds'], [/\bnds\b|\bnintendo ds\b|^ds$/, 'nds'],
   [/game ?cube|\bgcn?\b|\bngc\b/, 'gc'], [/\bwii\b/, 'wii'], [/64 ?dd/, 'n64dd'], [/\bn64\b|nintendo 64/, 'n64'],
   [/\bsnes\b|super nintendo|super famicom|\bsfc\b/, 'snes'], [/disk system|\bfds\b/, 'fds'], [/\bnes\b|famicom|nintendo entertainment/, 'nes'],
@@ -117,9 +138,19 @@ function sniffDiscImage(file, size) {
       if (/PLAYSTATION/i.test(sys)) return size > 900 * 1024 * 1024 ? 'ps2' : 'ps1';
       if (/NEOGEO/i.test(vol) || /NEO-GEO/i.test(sys)) return 'neocd';
     }
-    // Xbox discs (XDVDFS): an extracted "xiso" has it at 0x10000; full dumps put it after the video partition
-    for (const [off, sys] of [[0x18310000, 'xbox'], [0xfdb0000, 'x360'], [0x2090000, 'x360'], [0x10000, 'xbox']]) {
-      if (off + 20 <= size && txt(readAt(fd, off, 20), 0, 20) === XBOX_MAGIC) return sys;
+    // Xbox discs (XDVDFS): the volume descriptor sits 0x10000 into the game partition. Full dumps put the partition
+    // after a video partition (XGD1 0x18300000 original Xbox; XGD2 0xFD90000 and XGD3 0x2080000 Xbox 360);
+    // trimmed "xiso" files start with it. The game file in the root folder settles 360 vs original Xbox.
+    for (const [part, sys] of [[0x18300000, 'xbox'], [0xfd90000, 'x360'], [0x2080000, 'x360'], [0, null]]) {
+      const off = part + 0x10000;
+      if (off + 32 > size || txt(readAt(fd, off, 20), 0, 20) !== XBOX_MAGIC) continue;
+      const vd = readAt(fd, off, 32);
+      const rootAt = part + vd.readUInt32LE(20) * 2048;
+      const rootLen = Math.min(vd.readUInt32LE(24), 256 * 1024);
+      const root = rootLen && rootAt + rootLen <= size ? readAt(fd, rootAt, rootLen).toString('latin1').toLowerCase() : '';
+      if (root.includes('default.xex')) return 'x360';
+      if (root.includes('default.xbe')) return 'xbox';
+      return sys || 'xbox';
     }
     return null;
   });
@@ -140,15 +171,47 @@ function m3uFirst(file) {
   } catch { return null; }
 }
 
+/** What a CHD holds, from its metadata: 'gd' (Dreamcast/NAOMI GD-ROM), 'dvd', 'cd' or null. */
+function chdKind(file) {
+  return withFile(file, (fd) => {
+    const h = readAt(fd, 0, 124);
+    if (h.length < 64 || txt(h, 0, 8) !== 'MComprHD') return null;
+    const version = h.readUInt32BE(12);
+    const metaAt = version >= 5 ? Number(h.readBigUInt64BE(48)) : version >= 3 ? Number(h.readBigUInt64BE(36)) : 0;
+    let at = metaAt;
+    for (let i = 0; at && i < 64; i++) {
+      const m = readAt(fd, at, 16);
+      if (m.length < 16) break;
+      const tag = txt(m, 0, 4);
+      if (tag === 'CHGD') return 'gd';
+      if (tag === 'DVD ') return 'dvd';
+      if (tag === 'CHT2' || tag === 'CHTR' || tag === 'CHCD') return 'cd';
+      at = Number(m.readBigUInt64BE(8));
+    }
+    return null;
+  });
+}
+
 /** Work out which console a file is for. Returns a system id or null. */
 function sniffSystem(file, size, depth = 0) {
   const ext = path.extname(file).toLowerCase();
   const base = path.basename(file).toLowerCase();
-  if (base === 'param.sfo') return /^sce_sys$/i.test(path.basename(path.dirname(file))) ? 'vita' : 'ps3';
+  if (base === 'param.sfo') {
+    if (!/^sce_sys$/i.test(path.basename(path.dirname(file)))) return 'ps3';
+    // PS4 and Vita both use sce_sys/param.sfo: the title ID tells them apart (CUSA… is PS4, PCSx… is Vita)
+    let id = '';
+    try { id = parseSfo(fs.readFileSync(file)).TITLE_ID || ''; } catch { /* unreadable */ }
+    return /^(CUSA|PLAS|PCAS|PCJS|PLJS|PLJM|PCKS)/i.test(id) ? 'ps4' : 'vita';
+  }
+  if (base === 'param.json') return 'ps5';
+  if (base === 'microsoftgame.config' || base === 'appxmanifest.xml') return hintFromPath(file) === 'xsx' ? 'xsx' : 'xone';
   if (base === 'meta.xml') return 'wiiu';
   if (CART_EXT[ext]) return CART_EXT[ext];
-  if (ext === '.pkg') return withFile(file, (fd) => (readAt(fd, 0, 4).toString('latin1') === '\x7fPKG' ? 'ps3' : null));
+  if (ext === '.pkg') return withFile(file, (fd) => { const m = readAt(fd, 0, 4).toString('latin1'); return m === '\x7fPKG' ? 'ps3' : m === '\x7fCNT' ? 'ps4' : null; });
+  // Switch 2 dumps use the same file types as the Switch: only their folder tells them apart
+  if (['.nsp', '.nsz', '.xci', '.xcz'].includes(ext) && hintFromPath(file) === 'switch2') return 'switch2';
   if (DISC_EXT[ext]) return DISC_EXT[ext];
+  if (!ext) return stfsInfo(file) ? 'x360' : null;
   if (!SHARED_EXT.includes(ext)) return null;
   const hint = hintFromPath(file);
   const refine = (found) => {
@@ -167,7 +230,14 @@ function sniffSystem(file, size, depth = 0) {
     }
     return hint && NAME_ONLY.has(hint) ? hint : 'ps1';
   }
-  if (ext === '.chd') return hint && (NAME_ONLY.has(hint) || hint === 'gc' || hint === 'wii') ? hint : 'ps1'; // compressed: only the folder can tell
+  if (ext === '.chd') {
+    // compressed, but the CHD's own notes say what kind of disc it holds: GD-ROM is Dreamcast, DVD is PS2-era, CD is the rest
+    const kind = chdKind(file);
+    if (kind === 'gd') return hint === 'naomi' || hint === 'atomiswave' ? hint : 'dreamcast';
+    if (kind === 'dvd') return hint && ['ps2', 'psp', 'gc', 'wii', 'xbox', 'x360'].includes(hint) ? hint : 'ps2';
+    if (kind === 'cd' && hint === 'dreamcast') return 'ps1'; // a CD-ROM can't be a Dreamcast GD-ROM
+    return hint && (NAME_ONLY.has(hint) || hint === 'gc' || hint === 'wii') ? hint : 'ps1';
+  }
   const found = sniffDiscImage(file, size);
   if (found) return refine(found);
   if (ext === '.bin') {
@@ -193,16 +263,29 @@ function dumpMarker(dir, entries) {
   };
   const ps3 = find(dir, 'ps3_game', entries);
   if (ps3) { const sfo = find(ps3, 'param.sfo'); if (sfo) return sfo; }
+  // PS3 digital (PSN) game folder, as installed on the console: NPUB30000/PARAM.SFO + USRDIR
+  if (find(dir, 'usrdir', entries)) { const sfo = find(dir, 'param.sfo', entries); if (sfo) return sfo; }
   const sce = find(dir, 'sce_sys', entries);
   if (sce && find(dir, 'eboot.bin', entries)) { const sfo = find(sce, 'param.sfo'); if (sfo) return sfo; }
   const meta = find(dir, 'meta', entries);
   if (meta && find(dir, 'code', entries)) { const xml = find(meta, 'meta.xml'); if (xml) return xml; }
+  // Wii U in NUS format (encrypted, as downloaded from Nintendo): title.tmd + title.tik + 000000xx.app files
+  const tmd = find(dir, 'title.tmd', entries);
+  if (tmd && (entries || []).some((e) => /^[0-9a-f]{8}\.app$/i.test(e))) return tmd;
+  if (sce && find(dir, 'eboot.bin', entries)) { const json = find(sce, 'param.json'); if (json) return json; } // PS5
+  const xbox = find(dir, 'microsoftgame.config', entries) || (find(dir, 'appxmanifest.xml', entries) && find(dir, 'resources.pri', entries) ? find(dir, 'appxmanifest.xml', entries) : null);
+  if (xbox) return xbox; // Xbox One / Series (GDK or UWP package)
   return find(dir, 'default.xex', entries) || find(dir, 'default.xbe', entries);
 }
 
 /** "Crash Bandicoot (USA) (Disc 1) [!].cue" -> "Crash Bandicoot" */
 function nameFromFile(file) {
-  return path.basename(file, path.extname(file)).replace(/\s*[([].*$/, '').replace(/_/g, ' ').trim();
+  return path.basename(file, path.extname(file))
+    .replace(/^\d{3,5}\s*-\s+/, '') // release numbers: "0337 - Mario Kart 7"
+    .replace(/\s*[([].*$/, '')
+    .replace(/_/g, ' ')
+    .replace(/\s+(decrypted|encrypted|trimmed|cia|3ds)$/i, '')
+    .trim();
 }
 
 // ---- Headers of modern formats ------------------------------------------------------------
@@ -243,8 +326,31 @@ function nameOnlyInfo(file, system) {
         name = xmlTag(xml, 'longname_en') || name;
         serial = xmlTag(xml, 'product_code');
       }
+    } else if (base === 'title.tmd') {
+      // NUS folders are usually named after the game ("Mario Kart 8 [0005000010145D00]"); the title ID is in the TMD
+      name = nameFromFile(parent);
+      const id = withFile(file, (fd) => readAt(fd, 0x18c, 8));
+      if (id.length === 8) serial = id.toString('hex').toUpperCase();
     } else if (base === 'default.xex' || base === 'default.xbe') {
       name = nameFromFile(parent);
+    } else if (base === 'param.json') {
+      const j = JSON.parse(fs.readFileSync(file, 'utf8'));
+      const loc = j.localizedParameters || {};
+      const lang = loc[loc.defaultLanguage] || loc['en-US'] || Object.values(loc).find((v) => v && v.titleName) || {};
+      name = lang.titleName || nameFromFile(path.dirname(parent));
+      serial = j.titleId || '';
+    } else if (base === 'microsoftgame.config' || base === 'appxmanifest.xml') {
+      const xml = fs.readFileSync(file, 'utf8');
+      name = (xml.match(/DefaultDisplayName="([^"]+)"/) || xml.match(/<DisplayName>([^<]+)<\/DisplayName>/) || [])[1] || nameFromFile(parent);
+      if (/^ms-resource:/i.test(name)) name = nameFromFile(parent);
+      serial = (xml.match(/TitleId="?([0-9A-Fa-f]{8})/) || xml.match(/<TitleId>([0-9A-Fa-f]{8})</) || [])[1] || '';
+    } else if (ext === '.pkg' && system === 'ps4') {
+      // PS4 package: the content ID at 0x40 holds the title ID (UP9000-CUSA00900_00-…)
+      const cid = withFile(file, (fd) => txt(readAt(fd, 0x40, 36), 0, 36));
+      serial = (cid.match(/[A-Z]{4}\d{5}/) || [])[0] || '';
+    } else if (system === 'x360' && !ext) {
+      const s = stfsInfo(file);
+      if (s) { name = s.title || nameFromFile(path.dirname(parent)); serial = s.titleId; }
     } else if (system === 'switch') {
       const id = path.basename(file).match(/\[(0100[0-9a-f]{12})\]/i);
       serial = id ? id[1].toUpperCase() : '';
@@ -390,17 +496,17 @@ async function inspectRom(file) {
     const order = n64Order(raw);
     if (!order) throw new Error('This file does not look like an N64 ROM');
     const data = toZ64(raw);
-    return { system, size: data.length, format: order, data, storeExt, sha1: sha1(data), ...parseN64Header(data) };
+    return { system, size: data.length, format: order, data, storeExt, converted: order !== 'z64', sha1: sha1(data), ...parseN64Header(data) };
   }
 
   const data = stripHeader(system, raw);
   const header = system === 'snes' ? parseSnesHeader(data) : cartHeader(system, raw);
-  const info = { system, size: data.length, format: ext.slice(1), data, storeExt, sha1: sha1(data), ...header };
+  const info = { system, size: data.length, format: ext.slice(1), data, storeExt, converted: data !== raw, sha1: sha1(data), ...header };
   if (data !== raw) info.alt = { data: raw, sha1: sha1(raw) };
   return info;
 }
 
 module.exports = {
-  ROM_EXTENSIONS, NAME_ONLY, systemForExtension, sniffSystem, sniffDiscImage, hintFromPath, dumpMarker, cueTracks, nameFromFile,
+  chdKind, SHARED_EXT_SET: new Set(SHARED_EXT), stfsInfo, ROM_EXTENSIONS, NAME_ONLY, systemForExtension, sniffSystem, sniffDiscImage, hintFromPath, dumpMarker, cueTracks, nameFromFile,
   parseSfo, n64Order, toZ64, parseN64Header, stripSnesCopierHeader, parseSnesHeader, readDiscHeader, inspectRom, sha1, sha1File,
 };

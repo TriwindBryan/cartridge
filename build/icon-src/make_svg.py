@@ -1,4 +1,4 @@
-# Generates the Cartridge icon SVGs. Run: python3 make_svg.py && python3 render.py . && python3 sheet.py
+# Generates the Cartridge icon SVGs. Run: python3 make_svg.py && python3 render.py . && python3 make_square.py . ..
 def svg(L, R, T, B, glow=26, tight=9, small=False, view='0 0 512 512'):
     cx = (L + R) / 2; W = R - L
     cl, cr = L + W * 0.13, R - W * 0.13          # connector
