@@ -48,6 +48,8 @@ contextBridge.exposeInMainWorld('cartridge', {
   addUserGame: call('addUserGame'),
   communityList: call('communityList'),
   discoverVisited: call('discoverVisited'),
+  checkPlatforms: call('checkPlatforms'),
+  onPlatformProgress: (fn) => ipcRenderer.on('platformProgress', (_e, p) => fn(p)),
   setFavorite: call('setFavorite'),
   addCommunityGame: call('addCommunityGame'),
   metascore: call('metascore'),

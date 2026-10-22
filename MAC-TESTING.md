@@ -4,7 +4,7 @@ Thanks for helping! This takes about 20–30 minutes. Cartridge has only been te
 
 ## 1. Install it
 
-1. Download **Cartridge-1.45.0-arm64.dmg** (for M1/M2/M3/M4 Macs) from the link you were sent.
+1. Download **Cartridge-1.51.0-arm64.dmg** (for M1/M2/M3/M4 Macs) from the link you were sent.
 2. Open the .dmg and drag **Cartridge** into **Applications**.
 3. Open Cartridge from Applications. macOS will say it can't verify the developer (Cartridge isn't registered with Apple yet). Click **Done**, then go to **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** next to Cartridge. Confirm with your password. You only do this once.
 
@@ -13,6 +13,7 @@ Thanks for helping! This takes about 20–30 minutes. Cartridge has only been te
 - [x] **All text shows as letters, not boxes** (fixed in 1.30, confirmed).
 - [ ] Games without a Mac build (zelda3, most recomps) say **No Mac build yet** instead of Install.
 
+- [ ] **Small icons look right**: Cartridge's icon in Finder's list view, the Finder sidebar/Applications list and a small Dock. (If the old icon still shows, restart the Mac once; macOS caches icons.)
 - [ ] Cartridge opens within a few seconds and looks right (logo, games, covers loading).
 - [ ] **Cmd+Q** quits; the menu bar shows Cartridge, Edit, View and Window menus.
 - [ ] **Settings → Controller**: connect a controller (Xbox, PlayStation, Switch Pro or 8BitDo), press a button, and check the buttons light up. Then on the Games screen: D-pad moves, A selects, the View/Share/Minus button opens the side panel.

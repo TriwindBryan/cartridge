@@ -1419,18 +1419,101 @@ test('favorites, new ports since your last visit, and color themes', async () =>
   await lib.discoverVisited();
   assert.deepEqual(lib.markCommunity([item('a/one'), item('a/two'), item('b/three')]).items.filter((c) => c.isNew).map((c) => c.repo), ['b/three']);
 
+  // a whole new list arriving at once isn't 50 "new" ports
+  lib.discoverPrev = null;
+  lib.state.discoverVisitedAt = Date.now() - 1000;
+  await lib.discoverVisited();
+  await new Promise((r) => setTimeout(r, 5));
+  const batch = Array.from({ length: 50 }, (_, i) => item(`batch/p${i}`));
+  assert.equal(lib.markCommunity([item('a/one'), ...batch]).items.filter((c) => c.isNew).length, 0);
+
   // themes: every preset has every color, and custom colors sit on top of the preset they started from
   global.window = {};
   require('../renderer/themes.js');
   const { THEMES, THEME_KEYS, themeColors } = global.window;
   for (const t of THEMES) for (const [k] of THEME_KEYS) assert.match(t.colors[k], /^#[0-9a-f]{6}$/i, `${t.id}.${k}`);
-  assert.equal(themeColors(undefined).magenta, '#c8161d', 'Cartridge Red by default');
+  assert.equal(themeColors(undefined).magenta, '#1f7fb0', 'Cartridge Frost by default');
+  assert.equal(THEMES[0].name, 'Cartridge Frost');
   const c = themeColors({ preset: 'custom', base: 'midnight', custom: { magenta: '#123456' } });
   assert.equal(c.magenta, '#123456');
   assert.equal(c.gold, THEMES.find((t) => t.id === 'midnight').colors.gold);
   delete global.window;
   const css = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'styles.css'), 'utf8');
   assert.ok(!/rgba\(\s*226,\s*52,\s*43/.test(css.slice(css.indexOf('* { box-sizing'))), 'the reds follow the theme');
+});
+
+test('the color wash finds a cover\'s main color; the Mac icon stores small sizes as ARGB', () => {
+  const { dominantColor } = require('../src/core/color');
+  const px = (fn) => Buffer.from(Array.from({ length: 1024 }, (_, i) => fn(i)).flat());
+  const red = dominantColor(px((i) => (i % 5 === 0 ? [200, 20, 30, 255] : [245, 245, 245, 255])));
+  assert.match(red, /^#[c-f][0-9a-f]{5}$/i, 'a white cover with a red logo gives red, not gray');
+  assert.equal(dominantColor(px(() => [120, 120, 120, 255])), null, 'a gray cover gives nothing (the theme shows)');
+  // BGRA order is read too
+  const blue = dominantColor(px(() => [200, 60, 20, 255]), { bgra: true });
+  assert.ok(parseInt(blue.slice(5, 7), 16) > parseInt(blue.slice(1, 3), 16), 'blue in BGRA');
+
+  const icns = fs.readFileSync(path.join(__dirname, '..', 'build', 'icon.icns'));
+  assert.equal(icns.toString('latin1', 0, 4), 'icns');
+  assert.equal(icns.readUInt32BE(4), icns.length);
+  const tags = {};
+  for (let i = 8; i < icns.length;) { const n = icns.readUInt32BE(i + 4); tags[icns.toString('latin1', i, i + 4)] = icns.subarray(i + 8, i + n); i += n; }
+  assert.equal(tags.ic04.toString('latin1', 0, 4), 'ARGB', '16 px as ARGB');
+  assert.equal(tags.ic05.toString('latin1', 0, 4), 'ARGB', '32 px as ARGB');
+  assert.ok(!tags.icp4 && !tags.icp5, 'no PNGs at 16 and 32 px (Finder garbles them)');
+  for (const t of ['ic07', 'ic08', 'ic09', 'ic10', 'ic11', 'ic12', 'ic13', 'ic14']) assert.ok(tags[t], t);
+});
+
+test('Find more: which ports have Windows and Mac downloads', async () => {
+  const pl = require('../src/core/platforms');
+  const html = (repo, tag, names) => names.map((n) => `<a href="/${repo}/releases/download/${tag}/${encodeURIComponent(n)}" rel="nofollow">${n}</a>`).join('');
+  assert.deepEqual(pl.assetNamesFromHtml(html('a/b', 'v1', ['Game Win64.zip', 'Game-mac.dmg']), 'a/b'), ['Game Win64.zip', 'Game-mac.dmg']);
+  assert.deepEqual(pl.platformsOf(['SoH-Win64.zip', 'SoH-Mac.zip', 'SoH-Linux.AppImage']), { win: true, mac: true, linux: true });
+  assert.deepEqual(pl.platformsOf(['zelda3_v0.3.zip']), { win: true, mac: false, linux: false }, 'an unlabelled zip is a Windows build');
+  assert.deepEqual(pl.platformsOf(['Game-macos-arm64.dmg']), { win: false, mac: true, linux: false });
+  assert.deepEqual(pl.platformsOf(['source.tar.gz']), { win: false, mac: false, linux: false });
+
+  // a fake github.com: two repos with releases, one without, one that answers "busy"
+  const releases = { 'hm/soh': ['SoH-Win64.zip', 'SoH-Mac.zip'], 'x/winonly': ['game-windows-x64.zip'] };
+  const fakeFetch = async (url) => {
+    let m = url.match(/github\.com\/([^/]+\/[^/]+)\/releases\/latest$/);
+    if (m) {
+      return releases[m[1]] ? { status: 200, ok: true, url: `https://github.com/${m[1]}/releases/tag/v1.0` } : { status: 200, ok: true, url: `https://github.com/${m[1]}/releases` };
+    }
+    m = url.match(/github\.com\/([^/]+\/[^/]+)\/releases\/expanded_assets\/(.+)$/);
+    if (m) return { status: 200, ok: true, text: async () => html(m[1], m[2], releases[m[1]]) };
+    return { status: 404, ok: false };
+  };
+  assert.deepEqual(await pl.latestAssetNames('hm/soh', '', fakeFetch), { tag: 'v1.0', names: ['SoH-Win64.zip', 'SoH-Mac.zip'] });
+  assert.deepEqual(await pl.latestAssetNames('no/releases', '', fakeFetch), { tag: null, names: [] });
+
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'cart-plat-'));
+  const lib = new Library({ dataDir: path.join(work, 'data'), catalogFile: path.join(__dirname, '..', 'catalog', 'games.json'), platform: 'win32' });
+  await lib.load();
+  const item = (repo, get = 'download') => ({ key: `${repo}#`, repo, name: repo, project: repo, system: 'n64', kind: 'Native PC port', tags: [], get });
+  const items = [item('hm/soh'), item('x/winonly'), item('no/releases'), item('self/build', 'build')];
+  const seen = [];
+  await lib.checkPlatforms(items, { fetchImpl: fakeFetch, concurrency: 1, onProgress: (d, t) => seen.push(`${d}/${t}`) });
+  assert.deepEqual(seen, ['1/3', '2/3', '3/3'], 'build-it-yourself ports are skipped');
+  const marked = Object.fromEntries(lib.markCommunity(items).items.map((c) => [c.repo, [c.win, c.mac]]));
+  assert.deepEqual(marked['hm/soh'], [true, true]);
+  assert.deepEqual(marked['x/winonly'], [true, false]);
+  assert.deepEqual(marked['no/releases'], [false, false]);
+  assert.deepEqual(marked['self/build'], [false, false]);
+  // cached: nothing to check the second time; a busy GitHub stops the check (the rest wait for next time)
+  assert.deepEqual(await lib.checkPlatforms(items, { fetchImpl: fakeFetch }), { checked: 0, failed: 0 }, 'cached: nothing to check again');
+  // GitHub says "slow down": Cartridge pauses and carries on; what still fails is counted, not silently dropped
+  let busyLeft = 2;
+  releases['busy/repo'] = ['Game-Mac.zip'];
+  const flaky = async (url) => (/busy\/repo\/releases\/latest$/.test(url) && busyLeft-- > 0 ? { status: 429, ok: false, url } : fakeFetch(url));
+  const waits = [];
+  const r = await lib.checkPlatforms([item('busy/repo'), item('later/one')], { fetchImpl: flaky, concurrency: 1, wait: async (ms) => { waits.push(ms); } });
+  assert.equal(waits.length, 2, 'waited twice, then carried on');
+  assert.deepEqual(r, { checked: 2, failed: 0 });
+  assert.deepEqual(lib.markCommunity([item('busy/repo')]).items[0].mac, true);
+  const broken = async () => { throw new Error('boom'); };
+  const r2 = await lib.checkPlatforms([item('new/one')], { fetchImpl: broken, wait: async () => {} });
+  assert.deepEqual(r2, { checked: 0, failed: 1 });
+  assert.deepEqual(lib.markCommunity([item('new/one')]).platformCheck, { total: 1, failed: 1 }, 'the page can say what is still unknown');
 });
 
 test('Xbox 360: full disc dumps, trimmed isos and Games on Demand are recognised', async () => {

@@ -98,11 +98,31 @@ def mac_icon(px):
     return c
 def png_bytes(im):
     b = io.BytesIO(); im.save(b, 'PNG'); return b.getvalue()
-ICNS = [('icp4', 16), ('icp5', 32), ('icp6', 64), ('ic07', 128), ('ic08', 256), ('ic09', 512), ('ic10', 1024),
-        ('ic11', 32), ('ic12', 64), ('ic13', 256), ('ic14', 512)]
+def icns_rle(chan):
+    # Apple's icon run-length packing: 0..127 = copy n+1 bytes, 128..255 = repeat the next byte n-125 times
+    out = bytearray(); i = 0; n = len(chan)
+    while i < n:
+        run = 1
+        while i + run < n and run < 130 and chan[i + run] == chan[i]: run += 1
+        if run >= 3:
+            out += bytes([run + 125, chan[i]]); i += run; continue
+        j = i; lit = bytearray()
+        while j < n and len(lit) < 128:
+            if j + 2 < n and chan[j] == chan[j + 1] == chan[j + 2]: break
+            lit.append(chan[j]); j += 1
+        out += bytes([len(lit) - 1]) + lit; i = j
+    return bytes(out)
+def argb_bytes(im):
+    # the 16 and 32 px sizes as raw ARGB, like Apple's own iconutil writes them: Finder's list view, the sidebar and
+    # small Dock sizes draw these, and some macOS versions garble PNGs stored at these two sizes
+    im = im.convert('RGBA')
+    r, g, b, a = [bytes(c.getdata()) for c in im.split()]
+    return b'ARGB' + b''.join(icns_rle(c) for c in (a, r, g, b))
+ICNS = [('ic04', 16, 'argb'), ('ic05', 32, 'argb'), ('icp6', 64, 'png'), ('ic07', 128, 'png'), ('ic08', 256, 'png'), ('ic09', 512, 'png'), ('ic10', 1024, 'png'),
+        ('ic11', 32, 'png'), ('ic12', 64, 'png'), ('ic13', 256, 'png'), ('ic14', 512, 'png')]
 body = b''
-for tag, px in ICNS:
-    data = png_bytes(mac_icon(px))
+for tag, px, kind in ICNS:
+    data = argb_bytes(mac_icon(px)) if kind == 'argb' else png_bytes(mac_icon(px))
     body += tag.encode('ascii') + struct.pack('>I', len(data) + 8) + data
 (out / 'icon.icns').write_bytes(b'icns' + struct.pack('>I', len(body) + 8) + body)
 

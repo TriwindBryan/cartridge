@@ -20,6 +20,7 @@ const arcade = require('./arcade');
 const crypto = require('crypto');
 const update = require('./update');
 const disk = require('./disk');
+const platforms = require('./platforms');
 
 const DAT_BASE = 'https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/';
 const RELEASE_TTL = 6 * 60 * 60 * 1000;
@@ -38,7 +39,7 @@ class Library extends EventEmitter {
     } catch { this.version = ''; this.links = {}; }
     this.statePath = path.join(dataDir, 'state.json');
     this.state = {
-      settings: { libraryDir: path.join(os.homedir(), 'Cartridge'), githubToken: '', extraCatalogUrl: '', romFolders: [], showMetacritic: false, welcomeSeen: false, checkUpdates: true, backgroundImage: '', backgroundDim: 55, backupDir: '', autoBackup: true, steamGridKey: '' },
+      settings: { libraryDir: path.join(os.homedir(), 'Cartridge'), githubToken: '', extraCatalogUrl: '', romFolders: [], showMetacritic: false, welcomeSeen: false, checkUpdates: true, backgroundImage: '', backgroundDim: 55, heroBackdrop: 'wash', backupDir: '', autoBackup: true, steamGridKey: '' },
       installed: {}, roms: [], romOverride: {}, releases: {}, userGames: [], scanIndex: {}, steam: {}, covers: {},
     };
     this.dats = {};
@@ -973,10 +974,82 @@ class Library extends EventEmitter {
     }
   }
 
+  // ---------- which computers each Find more port has downloads for ----------
+  platformKey(c) { return `${c.repo.toLowerCase()}#${(c.assetFilter || '').toLowerCase()}`; }
+
+  /** { win, mac } once known (from the shelf's own release check, or the Find more check), else {}. */
+  platformsFor(c) {
+    if (c.get === 'build') return { win: false, mac: false, linux: false, platformsKnown: true };
+    const hit = (this.state.platformCache || {})[this.platformKey(c)];
+    if (hit) return { win: hit.win, mac: hit.mac, linux: !!hit.linux, platformsKnown: true };
+    return {};
+  }
+
+  /**
+   * Look up, in the background, which Find more ports have Windows and Mac downloads (a few at a time, cached for
+   * a few days). onProgress(done, total) as it goes. Calling it again while it runs just returns the running check.
+   */
+  checkPlatforms(items, { onProgress = () => {}, fetchImpl, concurrency = 4, wait = (ms) => new Promise((r) => setTimeout(r, ms)), busyWaitMs = 45000 } = {}) {
+    if (this.platformJob) return this.platformJob.promise;
+    const cache = this.state.platformCache || (this.state.platformCache = {});
+    const now = Date.now();
+    const keys = new Set();
+    const todo = items.filter((c) => {
+      const k = this.platformKey(c);
+      if (c.get === 'build' || keys.has(k)) return false; // (two list entries for one download are checked once)
+      keys.add(k);
+      return !(cache[k] && now - cache[k].at < platforms.TTL);
+    });
+    if (!todo.length) { this.platformSummary = { total: keys.size, failed: 0 }; return Promise.resolve({ checked: 0, failed: 0 }); }
+    const job = { done: 0, total: todo.length, failed: 0 };
+    this.platformJob = job;
+    let i = 0, busyWaits = 0, sinceSave = 0;
+    const retry = [];
+    const one = async (c) => {
+      for (;;) {
+        try {
+          const { names } = await platforms.latestAssetNames(c.repo, this.state.settings.githubToken, fetchImpl);
+          cache[this.platformKey(c)] = { ...platforms.platformsOf(names, c.assetFilter), at: Date.now() };
+          return true;
+        } catch (e) {
+          // GitHub asked us to slow down: pause, then carry on (a few times at most)
+          if (e.code === 'RATE_LIMIT' && busyWaits < 4) { busyWaits++; await wait(busyWaitMs); continue; }
+          return false;
+        }
+      }
+    };
+    const worker = async (list) => {
+      while (i < list.length) {
+        const c = list[i++];
+        if (!(await one(c))) retry.push(c);
+        job.done++;
+        onProgress(job.done, job.total);
+        if (++sinceSave >= 25) { sinceSave = 0; this.save().catch(() => {}); }
+      }
+    };
+    job.promise = (async () => {
+      await Promise.all(Array.from({ length: concurrency }, () => worker(todo)));
+      // one more go for the ones that failed (a hiccup, a slow answer)
+      if (retry.length) {
+        const again = retry.splice(0);
+        let j = 0;
+        await Promise.all(Array.from({ length: 2 }, async () => { while (j < again.length) { const c = again[j++]; if (!(await one(c))) retry.push(c); } }));
+      }
+      job.failed = retry.length;
+      this.platformSummary = { total: keys.size, failed: retry.length };
+      await this.save();
+      return { checked: job.done - retry.length, failed: retry.length };
+    })().finally(() => { this.platformJob = null; });
+    return job.promise;
+  }
+
   /** Remember when each port was first seen (the very first list is the baseline: nothing is "new" in it). */
   noteFirstSeen(items) {
     const seen = this.state.communityFirstSeen || (this.state.communityFirstSeen = {});
-    const baseline = !Object.keys(seen).length;
+    // the very first list, or a big batch at once (a whole new list joining, like Recompendium did), is a starting
+    // point, not news: only ports that trickle in afterwards count as new
+    const unseen = items.filter((c) => !(c.key in seen)).length;
+    const baseline = !Object.keys(seen).length || unseen > 40;
     const now = Date.now();
     let changed = false;
     for (const c of items) if (!(c.key in seen)) { seen[c.key] = baseline ? 0 : now; changed = true; }
@@ -987,12 +1060,16 @@ class Library extends EventEmitter {
     if (this.noteFirstSeen(items)) this.save().catch(() => {});
     const seen = this.state.communityFirstSeen || {};
     const since = this.discoverPrev != null ? this.discoverPrev : (this.state.discoverVisitedAt || 0);
+    // more than 40 "new" at once is a list change, not news (and fixes a count like "138 new" from before)
+    const fresh = items.filter((c) => seen[c.key] > 0 && seen[c.key] > since);
+    if (fresh.length > 40) { for (const c of fresh) seen[c.key] = 0; this.save().catch(() => {}); }
     const repos = new Map(this.games.map((g) => [`${(g.repo || '').toLowerCase()}#${(g.assetMatch || '').replace(/\\/g, '').toLowerCase()}`, g.id]));
     const plainRepos = new Map(this.games.map((g) => [(g.repo || '').toLowerCase(), g.id]));
     return {
       source: community.SOURCE_PAGE,
       recompendium: community.RECOMPENDIUM_PAGE,
-      items: items.map((c) => ({ ...c, isNew: seen[c.key] > 0 && seen[c.key] > since, onShelf: repos.get(c.key) || (!c.assetFilter && plainRepos.get(c.repo.toLowerCase())) || null })),
+      platformCheck: this.platformJob ? { running: true, done: this.platformJob.done, total: this.platformJob.total } : (this.platformSummary || null),
+      items: items.map((c) => ({ ...c, ...this.platformsFor(c), isNew: seen[c.key] > 0 && seen[c.key] > since, onShelf: repos.get(c.key) || (!c.assetFilter && plainRepos.get(c.repo.toLowerCase())) || null })),
     };
   }
 

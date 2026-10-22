@@ -68,6 +68,7 @@ window.HELP = [
       '<b>Click + Add</b> to put a game on your shelf. Then install it like any other game.',
       '<b>The colored labels</b> on each card say what it takes:<ul><li><b style="color:#7fd36b">Download</b>: has a release Cartridge can install.</li><li><b style="color:#c79bff">Build it yourself</b>: no download; you build it from the project\'s instructions (see <b>Games you build yourself</b>).</li><li><b style="color:#e8b03d">Needs game files</b>: wants files from your own console or disc, not just a ROM (see <b>Games that need your game files</b>).</li></ul>No label means the list doesn\'t say yet; add it and Cartridge checks for a download.',
       '<b>Status</b> on each card: <b>Complete</b> and <b>Playable</b> are good to go; <b>Early: expect bugs</b> is still in progress.',
+      '<b>Windows / Mac:</b> each card says <b>Windows</b>, <b>Mac</b>, or <b>No download yet</b>. Cartridge checks each port\'s latest release in the background the first time (a minute or two) and remembers it for a few days. Type <b>mac</b> or <b>windows</b> in the filter box to find them.',
       'Hover over a card to read what the port is and what it needs.',
       '<b>NEW</b> marks ports added to the lists since your last visit; the Find more tab says how many, and the <b>✦ New</b> chip shows just those.',
       '<b>Not listed?</b> Search GitHub at the bottom of the page.',
@@ -108,8 +109,9 @@ window.HELP = [
     lead: 'Keep the games you love at the top, and give Cartridge your own colors.',
     steps: [
       '<b>Favorites:</b> on a game\'s page click <b>☆ Add to favorites</b>. Favorites get their own row on the Games tab (after <b>Recently played</b>), a ★ on their cover, and the <b>★ Favorites</b> button next to ROMs at the top of the Games tab, which shows only them (key 6, or LB/RB on a controller).',
-      '<b>Colors:</b> in <b>Settings → Colors</b>, pick a theme (Cartridge Red, Midnight Blue, Synthwave, Toxic Green and more). The whole app changes straight away: panels, buttons, the sky and the grid floor.',
+      '<b>Colors:</b> in <b>Settings → Colors</b>, pick a theme (Cartridge Frost, the default, Cartridge Red, Midnight Blue, Synthwave and more). The whole app changes straight away: panels, buttons, the sky and the grid floor.',
       '<b>Your own colors:</b> pick <b>Custom</b> and choose each color: main color, accent, highlight, links and grid, the horizon glow and the sky. <b>Start again</b> goes back to the theme you started from.',
+      '<b>Behind the selected game:</b> in <b>Settings → Colors</b>, choose a soft glow in the cover\'s color (<b>Color wash</b>), nothing (<b>Theme only</b>), or the blurred cover.',
       '<b>Background:</b> in <b>Settings → Background</b>, use any picture instead of the sunset, and darken it so text stays readable.',
     ],
     actions: [['Go to Settings', 'settings'], ['Go to Games', 'shelf']],

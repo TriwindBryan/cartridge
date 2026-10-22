@@ -82,8 +82,44 @@ function hydrateArt(root = document) {
     if (!art.src || !el.isConnected) return;
     el.innerHTML = `<div class="art-blur" style="background-image:url('${art.src.replace(/'/g, '%27')}')"></div><img class="art-img${art.kind === 'icon' ? ' icon' : ''}" alt="" src="${esc(art.src)}">`;
     const bg = document.querySelector(`.hero-bg[data-for="${CSS.escape(g.id)}"] div`);
-    if (bg) bg.style.backgroundImage = `url('${art.src.replace(/'/g, '%27')}')`;
+    if (bg) fillBackdrop(bg, art.file, art.src);
   });
+}
+
+// ---------------------------------------------------------------- the backdrop behind the selected game
+// Settings → Colors → Game backdrop: 'wash' (a soft glow in the cover's main color), 'theme' (nothing), 'blur' (the cover, blurred)
+const backdropMode = () => (S && S.settings.heroBackdrop) || 'wash';
+const washCache = new Map();
+/** The cover's main color, measured on a small copy of it (null for gray covers, or when there's no cover file). */
+function coverColor(file) {
+  if (!file || !window.cartColor) return Promise.resolve(null);
+  if (!washCache.has(file)) {
+    washCache.set(file, (async () => {
+      try {
+        const img = new Image();
+        img.src = await api.imageData(file);
+        await img.decode();
+        const c = document.createElement('canvas');
+        c.width = c.height = 32;
+        const x = c.getContext('2d', { willReadFrequently: true });
+        x.drawImage(img, 0, 0, 32, 32);
+        return window.cartColor.dominantColor(x.getImageData(0, 0, 32, 32).data);
+      } catch { return null; }
+    })());
+  }
+  return washCache.get(file);
+}
+async function fillBackdrop(div, file, src) {
+  const mode = backdropMode();
+  const box = div.parentElement;
+  if (box) box.className = `hero-bg ${mode}`;
+  div.style.backgroundImage = '';
+  div.style.removeProperty('--wash');
+  if (mode === 'blur' && src) div.style.backgroundImage = `url('${src.replace(/'/g, '%27')}')`;
+  if (mode === 'wash') {
+    const color = await coverColor(file);
+    if (color && div.isConnected) div.style.setProperty('--wash', color);
+  }
 }
 
 // ---------------------------------------------------------------- helpers
@@ -681,7 +717,7 @@ function renderDetail() {
   const credits = (g.credits || []).map((c) => `<span class="credits">${esc(c.role)} <b>${esc(c.name)}</b></span>`).join('');
 
   el.innerHTML = `
-    <div class="hero-bg" data-for="${esc(g.id)}"><div></div></div>
+    <div class="hero-bg ${backdropMode()}" data-for="${esc(g.id)}"><div></div></div>
     <div class="box3d">
       ${burstHtml(burstOf(g))}
       <div class="box">
@@ -740,7 +776,7 @@ function renderRomDetail(el) {
   ].filter((p) => p && p[1]);
   const first = unlocks[0];
   el.innerHTML = `
-    <div class="hero-bg" data-for="rom:${esc(r.id)}"><div></div></div>
+    <div class="hero-bg ${backdropMode()}" data-for="rom:${esc(r.id)}"><div></div></div>
     <div class="box3d">
       <div class="box">
         <div class="box-front"><div class="art-slot" data-cover-kind="rom" data-ref="${esc(r.id)}" data-file="${esc(r.cover || '')}">${coverMarkup({ id: r.id, title: short, system: r.system }, true)}</div></div>
@@ -765,7 +801,7 @@ function renderRomDetail(el) {
       </div>
     </div>`;
   hydrateCovers(el);
-  if (r.cover) { const bg = el.querySelector('.hero-bg div'); if (bg) bg.style.backgroundImage = `url('${fileUrl(r.cover).replace(/'/g, '%27')}')`; }
+  if (r.cover) { const bg = el.querySelector('.hero-bg div'); if (bg) fillBackdrop(bg, r.cover, fileUrl(r.cover)); }
 }
 
 /** The card element that is currently selected (a game can appear in several rows). */
@@ -1222,6 +1258,8 @@ let communityData = null; // { source, items }
 let discoverSeen = false; // Find more opened this session (what's "new" is counted from the visit before)
 let communityError = null;
 const disc = { q: '', system: null, kind: null, get: null, limit: 60 };
+let platformsStarted = false;
+let platformProgress = null; // { done, total } while the Windows / Mac check runs
 // How you get a port running, from the Find more lists: tags of [label, tooltip, class]
 function getTags(c) {
   const tags = [];
@@ -1234,9 +1272,14 @@ function getTags(c) {
 async function loadCommunity(force = false) {
   communityError = null;
   try { communityData = await api.communityList(force); } catch (e) { communityError = e.message; }
+  if (communityData && !platformsStarted) { platformsStarted = true; guard(() => api.checkPlatforms()); }
   const fresh = communityData ? communityData.items.filter((c) => c.isNew).length : 0;
   const badge = $('#c-new');
-  if (badge) { badge.textContent = fresh ? `${fresh} new` : ''; badge.hidden = !fresh; }
+  if (badge) {
+    badge.textContent = fresh > 99 ? '99+' : String(fresh || '');
+    badge.title = `${fresh} new port${fresh === 1 ? '' : 's'} since your last visit`;
+    badge.hidden = !fresh;
+  }
   if (ui.view === 'discover') renderDiscoverList();
 }
 
@@ -1248,7 +1291,7 @@ function communityFiltered() {
     if (disc.kind && KIND_GROUP(c.kind) !== disc.kind) return false;
     if (disc.get === 'new' ? !c.isNew : disc.get && c.get !== disc.get) return false;
     if (!words.length) return true;
-    const hay = `${c.name} ${c.project} ${c.repo} ${c.tags.join(' ')} ${c.status || ''} ${(S.systems[c.system] || {}).name || ''}`.toLowerCase();
+    const hay = `${c.name} ${c.project} ${c.repo} ${c.tags.join(' ')} ${c.status || ''} ${(S.systems[c.system] || {}).name || ''} ${c.win ? 'windows pc' : ''} ${c.mac ? 'mac macos' : ''}`.toLowerCase();
     return words.every((w) => hay.includes(w));
   });
 }
@@ -1276,6 +1319,7 @@ function renderDiscover() {
     </div>
   </div>`;
   if (!discoverSeen) { discoverSeen = true; guard(() => api.discoverVisited()); }
+  else if (communityData) guard(() => api.checkPlatforms()); // anything not checked yet, or out of date
   if (!communityData && !communityError) loadCommunity();
   renderDiscoverList();
 }
@@ -1316,18 +1360,32 @@ function renderDiscoverList() {
 
   const items = communityFiltered();
   const shown = items.slice(0, disc.limit);
-  listEl.innerHTML = items.length
+  const pc = communityData.platformCheck;
+  const running = platformProgress && platformProgress.done < platformProgress.total;
+  const checking = running
+    ? `<p class="os-note">Checking which ports have Windows and Mac downloads… ${platformProgress.done} of ${platformProgress.total}. The Windows and Mac labels appear on the cards as it goes.</p>`
+    : pc && pc.failed
+      ? `<p class="os-note warn">${pc.failed} port${pc.failed > 1 ? 's' : ''} couldn't be checked yet (GitHub didn't answer), so ${pc.failed > 1 ? 'they don\'t' : 'it doesn\'t'} show Windows or Mac yet. <button class="btn-link" data-act="recheck-platforms">Check again</button></p>`
+      : '';
+  listEl.innerHTML = checking + (items.length
     ? `<div class="cgrid">${shown.map((c) => {
         const sys = S.systems[c.system] || {};
         const tip = [c.desc, c.needs && `Needs: ${c.needs}`].filter(Boolean).join('\n\n');
         const how = getTags(c);
+        if (c.platformsKnown && c.get !== 'build') {
+          // once the downloads are known, "Windows" / "Mac" say more than "Download"
+          if (c.win || c.mac) { const i = how.findIndex((t) => t[2] === 'dl'); if (i >= 0) how.splice(i, 1); }
+          if (c.win) how.push(['Windows', 'Has a Windows download', 'os']);
+          if (c.mac) how.push(['Mac', 'Has a Mac download', 'os']);
+          if (!c.win && !c.mac) how.push(['No download yet', 'The latest release has nothing for Windows or Mac', 'none']);
+        }
         return `<div class="ccard" style="--c:${sys.color || '#c8161d'}"${tip ? ` title="${esc(tip)}"` : ''}>
           ${c.isNew ? '<span class="new-badge" title="Added to the lists since your last visit">NEW</span>' : ''}<div class="ccard-art" data-cover-kind="title" data-system="${esc(c.system)}" data-title="${esc(c.name)}">${c.icon ? `<img class="icon-img" src="${esc(c.icon)}" alt="" loading="lazy">` : ''}<span class="sys-tag">${esc(sys.short || '')}</span></div>
           <div class="ccard-text"><b>${esc(c.name)}</b><span>${esc(c.project)}</span><em><span class="type-dot t-${typeOf(c.kind)[3]}"></span>${esc(typeOf(c.kind)[4].charAt(0) + typeOf(c.kind)[4].slice(1).toLowerCase())} · ${esc(c.repo.split('/')[0])}${c.status ? ` · <span class="ccard-status${/early/i.test(c.status) ? ' early' : ''}">${esc(c.status)}</span>` : ''}</em>${how.length ? `<span class="get-tags">${how.map(([l, tip, cls]) => `<i class="get-tag get-${cls}" title="${esc(tip)}">${esc(l)}</i>`).join('')}</span>` : ''}</div>
           ${c.onShelf ? `<button class="btn3d small lime" data-goto="${esc(c.onShelf)}">✓ On shelf</button>` : `<button class="btn3d small" data-add-community="${esc(c.key)}">+ Add</button>`}
         </div>`;
       }).join('')}</div>${items.length > shown.length ? `<div style="text-align:center;margin-top:16px"><button class="btn3d purple" data-act="disc-more">Show ${Math.min(60, items.length - shown.length)} more of ${items.length - shown.length}</button></div>` : ''}`
-    : '<div class="empty"><h2>No matches</h2><p>Try another word, or search GitHub below.</p></div>';
+    : '<div class="empty"><h2>No matches</h2><p>Try another word, or search GitHub below.</p></div>');
   hydrateCovers(listEl);
 }
 
@@ -1422,13 +1480,17 @@ async function loadRomCopies() {
 // ---------------------------------------------------------------- colors (Settings)
 const swatch = (c) => `<span class="sw" style="background:${c.magenta}"></span><span class="sw" style="background:${c.hot}"></span><span class="sw" style="background:${c.gold}"></span><span class="sw" style="background:${c.cyan}"></span>`;
 function themeSettingsHtml() {
-  const t = S.settings.theme || { preset: 'cartridge' };
+  const t = S.settings.theme || { preset: 'arctic' };
   const cur = window.themeColors(t);
   const presets = window.THEMES.map((x) => `<button class="theme-chip${t.preset === x.id ? ' on' : ''}" data-theme="${x.id}" title="${esc(x.name)}"><span class="sws">${swatch(x.colors)}</span>${esc(x.name)}</button>`).join('');
   const custom = `<button class="theme-chip${t.preset === 'custom' ? ' on' : ''}" data-theme="custom" title="Pick your own colors"><span class="sws">${swatch(cur)}</span>Custom</button>`;
   const pickers = t.preset === 'custom' ? `<div class="theme-custom">${window.THEME_KEYS.map(([k, label, tip]) => `<label class="color-pick" title="${esc(tip)}"><input type="color" data-theme-color="${k}" value="${esc(/^#[0-9a-f]{6}$/i.test(cur[k] || '') ? cur[k] : '#888888')}"><span><b>${esc(label)}</b><small>${esc(tip)}</small></span></label>`).join('')}</div>
     <div class="inline"><button class="btn-link" data-act="theme-reset">Start again from ${esc((window.THEMES.find((x) => x.id === t.base) || window.THEMES[0]).name)}</button></div>` : '';
-  return `<div class="theme-row">${presets}${custom}</div>${pickers}<small>Pick a color theme, or Custom to choose each color yourself. Changes show straight away.</small>`;
+  const mode = backdropMode();
+  const backdrop = [['wash', 'Color wash', 'A soft glow in the main color of the selected game\'s cover'], ['theme', 'Theme only', 'Just your theme behind the selected game'], ['blur', 'Blurred cover', 'The selected game\'s cover, blurred, behind it']]
+    .map(([id, label, tip]) => `<button class="${mode === id ? 'on' : ''}" data-backdrop="${id}" title="${esc(tip)}">${label}</button>`).join('');
+  return `<div class="theme-row">${presets}${custom}</div>${pickers}<small>Pick a color theme, or Custom to choose each color yourself. Changes show straight away.</small>
+    <div class="backdrop-row"><b>Behind the selected game</b><div class="seg">${backdrop}</div></div>`;
 }
 async function setTheme(theme) {
   S.settings.theme = theme;
@@ -1596,11 +1658,17 @@ document.addEventListener('click', async (e) => {
   }
   if (t.dataset.actWelcome) return closeWelcome(t.dataset.actWelcome === 'about' ? 'about' : null);
   if (t.dataset.tipClose) return closeTip();
+  if (t.dataset.backdrop) {
+    S.settings.heroBackdrop = t.dataset.backdrop;
+    const box = $('#appearance');
+    if (box) box.innerHTML = `<span>Colors</span>${themeSettingsHtml()}`;
+    return guard(() => api.settings({ heroBackdrop: t.dataset.backdrop }));
+  }
   if (t.dataset.theme) {
-    const cur = S.settings.theme || { preset: 'cartridge' };
+    const cur = S.settings.theme || { preset: 'arctic' };
     if (t.dataset.theme !== 'custom') return setTheme({ preset: t.dataset.theme });
     if (cur.preset === 'custom') return undefined;
-    return setTheme({ preset: 'custom', base: cur.preset || 'cartridge', custom: {} });
+    return setTheme({ preset: 'custom', base: cur.preset || 'arctic', custom: {} });
   }
   if (t.dataset.updateGo) { closeTip(); const g = S.games.find((x) => x.id === t.dataset.updateGo); return g ? onAction('install', g, { confirmed: true }) : undefined; }
   if (t.dataset.helpTip) return showTip(t.dataset.helpTip);
@@ -1676,11 +1744,12 @@ document.addEventListener('click', async (e) => {
   if (act === 'reset-filters') { $('#search').value = ''; ui.sort = 'smart'; saveViewPrefs(); return setView('shelf', { filter: 'all', system: null, query: '' }); }
   if (act === 'clear-filters') { $('#search').value = ''; return setView('shelf', { filter: 'all', system: null, kind: null, query: '' }); }
   if (act === 'community-refresh') { communityData = null; renderDiscoverList(); return loadCommunity(true); }
+  if (act === 'recheck-platforms') { platformProgress = { done: 0, total: 1 }; renderDiscoverList(); return guard(() => api.checkPlatforms()); }
   if (act === 'disc-more') { disc.limit += 60; return renderDiscoverList(); }
   if (act === 'pick-files') return showRomReport(await guard(() => api.pickRoms('files')));
   if (act === 'pick-folder') return showRomReport(await guard(() => api.pickRoms('folder')));
   if (act === 'add-folder') return addFolder();
-  if (act === 'theme-reset') { const cur = S.settings.theme || {}; return setTheme({ preset: 'custom', base: cur.base || 'cartridge', custom: {} }); }
+  if (act === 'theme-reset') { const cur = S.settings.theme || {}; return setTheme({ preset: 'custom', base: cur.base || 'arctic', custom: {} }); }
   if (act === 'check-setup') { if (!setupState.running) runSetupCheck(); return; }
   if (act === 'forget-missing') { const n = await guard(() => api.forgetMissing()); if (n) toast(`Removed ${n.toLocaleString()} missing ROM${n > 1 ? 's' : ''} from the list`, '', 'ok'); return; }
   if (act === 'rescan') { t.textContent = 'Scanning…'; const r = await guard(() => api.scanRomFolders(true)); showRomReport(r || [], true); return render(); }
@@ -1792,7 +1861,7 @@ document.addEventListener('input', (e) => {
   if (e.target.id === 'help-q') { helpUi.q = e.target.value; renderHelpBody(); }
   if (e.target.dataset && e.target.dataset.themeColor) {
     // live while dragging; saved a moment after you stop
-    const cur = S.settings.theme || { preset: 'custom', base: 'cartridge' };
+    const cur = S.settings.theme || { preset: 'custom', base: 'arctic' };
     const theme = { ...cur, preset: 'custom', custom: { ...(cur.custom || {}), [e.target.dataset.themeColor]: e.target.value } };
     S.settings.theme = theme;
     window.applyTheme(theme);
@@ -2236,6 +2305,12 @@ function applyBackground() {
 }
 
 api.onState((s) => { S = s; render(); });
+// the Windows / Mac check fills in as it goes: reload the (cached) list now and then
+api.onPlatformProgress && api.onPlatformProgress(async (p) => {
+  platformProgress = p;
+  try { communityData = await api.communityList(); } catch { /* keep what's there */ }
+  if (ui.view === 'discover') renderDiscoverList();
+});
 api.onCoverProgress && api.onCoverProgress(({ done, total }) => { const el = $('#cover-progress'); if (el) el.textContent = done < total ? `Checking ${done} of ${total}…` : ''; });
 api.onScanReport((r) => showRomReport(r, true));
 api.onNotice && api.onNotice((n) => { toast(n.title, n.body, n.kind || ''); if (ui.view === 'settings') loadRomCopies(); });

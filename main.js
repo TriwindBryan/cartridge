@@ -340,6 +340,14 @@ app.whenReady().then(async () => {
   handle('addUserGame', (entry) => lib.addUserGame(entry));
   handle('communityList', (force) => lib.communityList({ force }));
   handle('discoverVisited', () => lib.discoverVisited());
+  handle('checkPlatforms', async () => {
+    const { items } = await lib.communityList();
+    let last = 0;
+    const send = (done, total) => { if (win && !win.isDestroyed()) win.webContents.send('platformProgress', { done, total }); };
+    lib.checkPlatforms(items, { onProgress: (done, total) => { if (Date.now() - last > 700 || done === total) { last = Date.now(); send(done, total); } } })
+      .then(() => send(1, 1)).catch(() => send(1, 1));
+    return true;
+  });
   handle('setFavorite', (id, on) => lib.setFavorite(id, !!on));
   handle('addCommunityGame', (key) => lib.addCommunityGame(key));
   handle('metascore', (id, force) => lib.metascore(id, { force }));

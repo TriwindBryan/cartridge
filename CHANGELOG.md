@@ -2,6 +2,46 @@
 
 From 1.34 Cartridge is shown as **Beta 0.0001** (next to the logo, in the window title, on About and in Settings). Behind that name the build number keeps counting (1.34, 1.35…), because installers and the update check need a number that always goes up. Release tags on GitHub use the build number (v1.34); release titles use the beta name.
 
+## Beta 0.0018 (build 1.51) — October 21, 2026
+
+**Find more: Windows / Mac labels instead of a filter**
+- The Runs on: Windows · Mac buttons are gone for now. Each card still says **Windows**, **Mac**, both, or **No download yet**, and typing **mac** or **windows** in the filter box finds them.
+
+## Beta 0.0017 (build 1.50) — October 21, 2026
+
+**Fixed: Windows and Mac counts on Find more could differ between computers**
+- Each computer checks the downloads itself, and when GitHub said "slow down" the check simply stopped, leaving the rest uncounted until Cartridge was restarted. One computer could show 172 Mac ports and another far fewer.
+- Now, when GitHub asks to slow down, Cartridge waits a moment and carries on; anything that still fails gets a second try. Every time Find more opens, anything not checked yet is checked.
+- Find more says when ports couldn't be checked ("12 ports couldn't be checked yet… Check again"), so the labels are never quietly incomplete. Two list entries for the same download are checked once.
+
+## Beta 0.0016 (build 1.49) — October 21, 2026
+
+**Find more: Runs on Windows / Mac**
+- New **Runs on: Windows · Mac** filter on Find more, with counts. Pick Mac to see only ports that have a Mac download (or Windows for Windows ones); click it again to see every port.
+- The check also notes which ports have Linux downloads, ready for Linux and Steam Deck support.
+- Each card now says **Windows**, **Mac**, both, or **No download yet**, using the same rules as Install, so what the filter shows is what Install will find.
+- Cartridge reads each port's latest release in the background the first time Find more opens (a minute or two for the whole list; you can browse meanwhile, and the filter fills in as it goes) and remembers it for 3 days. Without a GitHub token it reads github.com's release pages, which aren't limited to 60 checks an hour; with a token it uses the GitHub API. If GitHub is busy it stops and picks up the rest next time.
+
+## Beta 0.0015 (build 1.48) — October 21, 2026
+
+- **The "new ports" count on the Find more tab is now a small round badge** on the tab's corner (like an app's notification count), instead of a pill that wrapped onto two lines. Over 99 shows "99+"; hover for the full count.
+- **A big batch isn't "new":** when a whole list's worth of ports appears at once (like the 138 from Recompendium joining), it counts as the starting point, not news. Only ports that trickle in afterwards get the NEW badge. A count left over from before is cleared automatically.
+
+## Beta 0.0014 (build 1.47) — October 21, 2026
+
+**Behind the selected game**
+- The big blurred copy of the cover behind the selected game is gone by default. It clashed with the theme (a white-and-red cover turned the top of a blue screen into a red-gray smear) and repeated the box art right next to it.
+- New default, **Color wash**: a soft glow in the cover's main color behind the box only, fading into your theme. Each game still feels a little different; the text stays easy to read. Gray covers just show the theme.
+- **Settings → Colors → Behind the selected game**: Color wash, **Theme only** (nothing behind the game), or **Blurred cover** (the old look).
+
+**Fixed (Mac): small icons still looked wrong**
+- The 16 and 32 pixel icons (Finder's list view, the sidebar, small Dock sizes) were stored as PNG pictures, which some macOS versions draw garbled. They're now stored as raw ARGB, the way Apple's own tools write them. If Finder still shows the old icon after updating, it's macOS's icon cache: restarting the Mac (or Finder) refreshes it.
+
+## Beta 0.0013 (build 1.46) — October 21, 2026
+
+- **New default look: Cartridge Frost.** The icy blue theme (formerly "Arctic") is now the default, first in Settings → Colors: deep ocean-blue panels, glacier-blue accents, frosty white highlights and a pale-blue horizon over the grid floor. Anyone who hasn't picked a theme gets it; anyone who has keeps theirs. **Cartridge Red** is still there, one click away.
+- The window opens straight in the new colors (no flash of red while it loads), and the highlighted tab, big buttons and score text now take their shading from the theme too.
+
 ## Beta 0.0012 (build 1.45) — October 20, 2026
 
 - **★ Favorites button** on the Games tab, right after ROMs in the All · Decomp · Recomp · Remake · ROMs row. One click shows only your favorites, with their count; key 6 or LB/RB on a controller reach it too. It replaces the Favorites option in the Status menu. With no favorites yet, it explains how to add one.
@@ -37,7 +77,7 @@ From 1.34 Cartridge is shown as **Beta 0.0001** (next to the logo, in the window
 - **Update to …** now shows that version's release notes first, with **Update now** or **Not now**.
 
 **Colors**
-- **Settings → Colors**: eight themes (Cartridge Red, Midnight Blue, Synthwave, Toxic Green, Sunset Orange, Arctic, Pocket Green, Steel). The whole app changes straight away, including the sky and the grid floor.
+- **Settings → Colors**: eight themes (Cartridge Frost, Cartridge Red, Midnight Blue, Synthwave, Toxic Green, Sunset Orange, Pocket Green, Steel). The whole app changes straight away, including the sky and the grid floor.
 - **Custom**: pick the main color, accent, highlight, links & grid, horizon glow and sky yourself, starting from any theme.
 
 ## Beta 0.0010 (build 1.43) — October 20, 2026

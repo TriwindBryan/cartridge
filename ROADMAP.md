@@ -48,7 +48,7 @@ Check each one's current download location before building. Some publish on thei
 
 ## Other platforms: Mac (in testing from 1.29), Steam Deck / Linux (planned)
 
-Mac started October 18, 2026 (1.29): built on GitHub Actions, being tested on an M1 Max. Still to learn from testing: how each Mac port wants its ROM, and which catalog ports have Mac builds. Later: Apple Developer ID ($99/year) to sign and notarize. Steam Deck / Linux next.
+Mac started October 18, 2026 (1.29), built on GitHub Actions. **Confirmed working on an M1 Max as of Beta 0.0015 (October 21, 2026); Cartridge is now the go-forward product on Windows and Mac.** Later: Apple Developer ID ($99/year) to sign and notarize. Steam Deck / Linux next.
 
 **What carries over unchanged:** ROM checking, covers, the catalog, the interface, backups, controller support. Electron runs on all three.
 
@@ -94,3 +94,9 @@ Mac started October 18, 2026 (1.29): built on GitHub Actions, being tested on an
 - Maybe later: an optional $4.99 Supporter Pack with extra themes, a supporter badge and your name in the credits. No features locked.
 - Downloads: GitHub Releases (also powers the update check), plus an itch.io page with pay-what-you-want.
 - To do before launch: create the GitHub repo and set `repo` in package.json, publish the first release with the .msi, make the itch.io page, add a Ko-fi cover image.
+
+
+## Ideas for later (October 21, 2026)
+1. Support: a "Report a problem" button (one zip with the log, Check my setup results and version), one-click Cartridge updates, "Update all" for games.
+2. **Linux and Steam Deck: planned next** (Find more already records which ports have Linux downloads, so a Linux filter is one line to add). Also mods and texture packs for Harbour Masters ports, and a TV / couch mode.
+3. Trust and reach: Windows code signing (Microsoft Trusted Signing, about $10/month), an itch.io page.

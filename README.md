@@ -15,7 +15,7 @@ The rest of this page is about building Cartridge yourself.
 1. Install Node.js once: `winget install OpenJS.NodeJS.LTS` (or the LTS installer from nodejs.org).
 2. Double-click **Start Cartridge.bat**. The first start downloads Electron (about a minute).
 
-To get a single portable `Cartridge-1.45.0-Portable.exe` you can share or keep anywhere, double-click **Build Portable EXE.bat**. The file appears in `dist\`.
+To get a single portable `Cartridge-1.51.0-Portable.exe` you can share or keep anywhere, double-click **Build Portable EXE.bat**. The file appears in `dist\`.
 
 ## Mac builds
 
@@ -25,7 +25,7 @@ On a Mac, Cartridge picks each port's Mac download (preferring Apple Silicon or 
 
 ## Make an installer (.msi)
 
-Double-click **Build Installer (MSI).bat**. It runs the tests and builds `dist\Cartridge-1.45.0-Setup.msi` (the first build downloads Electron and the WiX installer tools, so it takes a few minutes). The installer:
+Double-click **Build Installer (MSI).bat**. It runs the tests and builds `dist\Cartridge-1.51.0-Setup.msi` (the first build downloads Electron and the WiX installer tools, so it takes a few minutes). The installer:
 
 - asks whether to install just for you (no admin rights needed) or for everyone on the PC, and where;
 - adds Cartridge to the Start menu and the desktop, with the cartridge icon;
