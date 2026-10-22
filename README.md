@@ -2,6 +2,9 @@
 
 A launcher for decompiled and recompiled retro game ports. You bring the ROMs; Cartridge finds the ports, downloads them from their official GitHub releases, installs them, puts your ROM where each game expects it, and launches them. Built with the help of AI (Claude)
 
+<img width="1409" height="881" alt="Cartridge image 1" src="https://github.com/user-attachments/assets/d027d7ed-0996-418f-9caf-fb855fb94b82" />
+
+
 Cartridge is free. If you enjoy it, you can support it on [Ko-fi](https://ko-fi.com/triwind).
 
 **Download:** [latest release](https://github.com/TriwindBryan/cartridge/releases/latest). Get the .msi installer or the portable .exe. Windows 10/11, 64-bit. Windows may say "Windows protected your PC" because Cartridge isn't code-signed yet; click **More info → Run anyway**.
