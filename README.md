@@ -1,6 +1,6 @@
 # Cartridge
 
-A launcher for decompiled and recompiled retro game ports. You bring the ROMs; Cartridge finds the ports, downloads them from their official GitHub releases, installs them, puts your ROM where each game expects it, and launches them.
+A launcher for decompiled and recompiled retro game ports. You bring the ROMs; Cartridge finds the ports, downloads them from their official GitHub releases, installs them, puts your ROM where each game expects it, and launches them. Built with the help of AI (Claude)
 
 Cartridge is free. If you enjoy it, you can support it on [Ko-fi](https://ko-fi.com/triwind).
 
