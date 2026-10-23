@@ -102,7 +102,7 @@ function regionOf(name) {
 
 /** Download a console's cover list from GitHub (two API calls). */
 async function fetchIndexNames(repo, fetchImpl, token) {
-  const headers = { Accept: 'application/vnd.github+json', 'User-Agent': 'Cartridge-Launcher', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+  const headers = { Accept: 'application/vnd.github+json', 'User-Agent': 'Fulton-Launcher', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
   const get = async (url) => {
     const res = await fetchImpl(url, { headers });
     if (!res.ok) throw new Error(`GitHub ${res.status}`);
@@ -117,7 +117,7 @@ async function fetchIndexNames(repo, fetchImpl, token) {
   } catch (e) {
     // GitHub's API limit is 60 calls an hour without a token; the thumbnail server's folder listing is the backup
     const site = `https://thumbnails.libretro.com/${encodeURIComponent(repo.replace(/_/g, ' '))}/Named_Boxarts/`;
-    const res = await fetchImpl(site, { headers: { 'User-Agent': 'Cartridge-Launcher' } }).catch(() => null);
+    const res = await fetchImpl(site, { headers: { 'User-Agent': 'Fulton-Launcher' } }).catch(() => null);
     if (!res || !res.ok) throw e;
     const html = await res.text();
     return [...html.matchAll(/href="([^"?/]+)\.png"/gi)].map((m) => decodeURIComponent(m[1]));
@@ -126,7 +126,7 @@ async function fetchIndexNames(repo, fetchImpl, token) {
 
 /** SteamGridDB (needs the user's free API key): best 600x900 cover for a title. */
 async function steamGridCover(title, key, fetchImpl) {
-  const headers = { Authorization: `Bearer ${key}`, 'User-Agent': 'Cartridge-Launcher' };
+  const headers = { Authorization: `Bearer ${key}`, 'User-Agent': 'Fulton-Launcher' };
   const get = async (url) => {
     const res = await fetchImpl(url, { headers });
     if (res.status === 401 || res.status === 403) throw new Error('SteamGridDB key was not accepted');

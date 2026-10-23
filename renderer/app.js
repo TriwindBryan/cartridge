@@ -144,7 +144,7 @@ function burstOf(g) {
   if (g.romMatch && !g.sourceOnly && !(g.release && !g.release.asset)) return { cls: '', text: 'READY<br>TO GO!' };
   return null;
 }
-/** Does this port ask for the ROM itself when it starts? (Then loading it in Cartridge is optional.) */
+/** Does this port ask for the ROM itself when it starts? (Then loading it in Fulton is optional.) */
 const asksForRom = (g) => !g.sourceOnly && (((g.rom && g.rom.setup) || {}).type || 'in-app') === 'in-app';
 const burstHtml = (b) => (b ? `<div class="burst ${b.cls}"><span>${b.text}</span></div>` : '');
 
@@ -240,7 +240,7 @@ async function guard(fn) {
 
 // ---------------------------------------------------------------- header
 function renderHeader() {
-  const ver = $('#ver'); if (ver && S.version) { ver.textContent = verLabel(); ver.title = `About Cartridge (build ${S.version})`; }
+  const ver = $('#ver'); if (ver && S.version) { ver.textContent = verLabel(); ver.title = `About Fulton (build ${S.version})`; }
   $('#c-all').textContent = S.games.length;
   $('#c-roms').textContent = S.roms.length || '';
   document.querySelectorAll('#tabs .tab').forEach((b) => b.classList.toggle('active', b.dataset.view === ui.view));
@@ -253,7 +253,7 @@ function renderHeader() {
   $('#btn-support').hidden = !(S.links || {}).kofi;
   if (up && !ui.updateToasted) {
     ui.updateToasted = true;
-    toast('A new Cartridge is out!', "Your games, ROMs and saves carry over. Download it and run the installer.", 'ok', [['Download', () => api.openUrl(up.download || up.url)], ["What's new", () => api.openUrl(up.url)]]);
+    toast('A new Fulton is out!', "Your games, ROMs and saves carry over. Download it and run the installer.", 'ok', [['Download', () => api.openUrl(up.download || up.url)], ["What's new", () => api.openUrl(up.url)]]);
   }
   if (!S.settings.welcomeSeen && !ui.welcomeShown) showWelcome();
 }
@@ -264,13 +264,14 @@ function showWelcome() {
   const m = $('#modal');
   m.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
     <img class="modal-icon" src="../build/icon.png" alt="">
-    <h2 id="welcome-title"><span class="chrome">Welcome to Cartridge</span></h2>
-    <p class="lead">Cartridge finds fan-made PC ports of classic games, installs them from their official releases, and starts them for you.</p>
+    <h2 id="welcome-title"><span class="chrome">Welcome to Fulton</span></h2>
+    <p class="tagline">Your home base for recomps, decomps and remakes</p>
+    <p class="lead">Fulton finds fan-made PC ports of classic games, installs them from their official releases, and starts them for you.</p>
     <ul class="welcome-list">
-      <li><b>No games are included.</b> Cartridge doesn't include, download or share any games, ROMs, BIOS files or keys. Each port needs files from your own copy of the game.</li>
-      <li><b>Add your ROMs</b> with <em>+ Load ROM</em> or <em>ROM Folder</em>, or drop them on the window. Cartridge checks each one and shows which ports it unlocks.</li>
+      <li><b>No games are included.</b> Fulton doesn't include, download or share any games, ROMs, BIOS files or keys. Each port needs files from your own copy of the game.</li>
+      <li><b>Add your ROMs</b> with <em>+ Load ROM</em> or <em>ROM Folder</em>, or drop them on the window. Fulton checks each one and shows which ports it unlocks.</li>
       <li><b>Covers stay on this ${thisComputer()}.</b> Box art is downloaded from libretro-thumbnails for your own library and isn't shared anywhere.</li>
-      <li><b>Cartridge is free.</b> If it saves you some time, you can support it on Ko-fi from the ♥ button. Nothing is locked behind it.</li>
+      <li><b>Fulton is free.</b> If it saves you some time, you can support it on Ko-fi from the ♥ button. Nothing is locked behind it.</li>
     </ul>
     <div class="modal-actions"><button class="btn3d" data-act-welcome="ok">Let's go</button><button class="btn-link" data-act-welcome="about">About &amp; credits</button></div>
   </div>`;
@@ -310,7 +311,7 @@ function helpMatches() {
 
 function renderHelp() {
   $('#view').innerHTML = `<div class="panel wide" id="help-page">
-    ${panelHead('Help', 'How Cartridge works, in a few steps per topic.')}
+    ${panelHead('Help', 'How Fulton works, in a few steps per topic.')}
     <label class="search help-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M16 16l5 5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
       <input id="help-q" placeholder="Search help, e.g. ROM, Steam, build" value="${esc(helpUi.q)}" autocomplete="off"></label>
     <div class="help-grid"><nav class="help-toc" id="help-toc"></nav><div id="help-body"></div></div>
@@ -376,50 +377,52 @@ function renderAbout() {
   const up = S.appUpdate;
   const repoReady = /^[\w.-]+\/[\w.-]+$/.test(links.repo || '') && !/^YOUR[-_]/i.test(links.repo || '');
   $('#view').innerHTML = `<div class="panel" id="about-page">
-    ${panelHead('About Cartridge')}
+    ${panelHead('About Fulton', 'Your home base for recomps, decomps and remakes')}
     <div class="about-top">
       <img class="about-icon" src="../build/icon.png" alt="">
       <div>
-        <p class="about-name">Cartridge <b>${esc(verLabel())}</b> <small class="sub">build ${esc(S.version || '')}</small></p>
-        <p>A launcher for decompiled, recompiled and remade PC ports of classic games. You bring the ROMs, Cartridge does the rest.</p>
+        <p class="about-name">Fulton <b>${esc(verLabel())}</b> <small class="sub">build ${esc(S.version || '')}</small></p>
+        <p class="tagline"><b>Your home base for recomps, decomps and remakes</b></p>
+        <p>A launcher for decompiled, recompiled and remade PC ports of classic games. You bring the ROMs, Fulton does the rest.</p>
         <div class="inline about-btns">
-          ${links.kofi ? `<button class="support-btn big" data-url="${esc(links.kofi)}"><span aria-hidden="true">♥</span> Support Cartridge on Ko-fi</button>` : ''}
+          ${links.kofi ? `<button class="support-btn big" data-url="${esc(links.kofi)}"><span aria-hidden="true">♥</span> Support Fulton on Ko-fi</button>` : ''}
           <button class="btn-link" data-open-path="${esc(S.changelog || '')}">What's new</button>
           ${repoReady ? `<button class="btn-link" data-url="https://github.com/${esc(links.repo)}">Source code</button>` : ''}
           ${links.itch ? `<button class="btn-link" data-url="${esc(links.itch)}">itch.io page</button>` : ''}
         </div>
-        <small class="sub">Cartridge is free and always will be. Supporting it doesn't unlock anything; it just helps keep it going.</small>
+        <small class="sub">Fulton is free and always will be. Supporting it doesn't unlock anything; it just helps keep it going.</small>
+        <p class="sub about-made"><b>How Fulton is made:</b> designed, tested and maintained by a retro gamer of 40+ years. The code was written with the help of an AI assistant (Claude). Every feature, fix and release is decided and tested by hand.</p>
       </div>
     </div>
 
     <h3 class="about-h">Updates</h3>
     <div class="inline about-update">
-      <span id="update-status">${up ? `<b class="gold">A new Cartridge is out (build ${esc(up.version)}).</b>` : repoReady ? "You're on the latest version." : 'Update checks start once Cartridge has its GitHub home.'}</span>
+      <span id="update-status">${up ? `<b class="gold">A new Fulton is out (build ${esc(up.version)}).</b>` : repoReady ? "You're on the latest version." : 'Update checks start once Fulton has its GitHub home.'}</span>
       ${up ? `<button class="btn3d small" data-url="${esc(up.download || up.url)}">Download it</button>` : ''}
       ${repoReady ? '<button class="btn3d small purple" data-act-about="check">Check now</button>' : ''}
     </div>
 
     <h3 class="about-h">Thanks</h3>
-    <p class="sub">Cartridge only installs other people's work. These are the teams and people who decompiled and ported the games in the catalog. Their projects are free too, so consider supporting them.</p>
+    <p class="sub">Fulton only installs other people's work. These are the teams and people who decompiled and ported the games in the catalog. Their projects are free too, so consider supporting them.</p>
     <div class="credits" id="credits"><span class="sub">Loading…</span></div>
 
-    <h3 class="about-h">Data used by Cartridge</h3>
+    <h3 class="about-h">Data used by Fulton</h3>
     <ul class="about-list">
       <li><button class="btn-link" data-url="https://github.com/libretro-thumbnails">libretro-thumbnails</button>: box art, downloaded to your ${thisComputer()} as you need it</li>
       <li><button class="btn-link" data-url="https://github.com/libretro/libretro-database">libretro-database</button> and <button class="btn-link" data-url="https://www.no-intro.org">No-Intro</button>: checksums used to recognise your ROMs</li>
       <li><button class="btn-link" data-url="https://www.mamedev.org">MAME</button> and <button class="btn-link" data-url="https://github.com/finalburnneo/FBNeo">FinalBurn Neo</button>: the list of arcade games</li>
       <li><button class="btn-link" data-url="https://github.com/tgeorgiadis/quiver-community-app-catalog">Quiver community catalog</button> and <button class="btn-link" data-url="https://recompendium.com/en/">Recompendium</button> (by Nio03, data under <button class="btn-link" data-url="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</button>): the ports on Find more</li>
       <li><button class="btn-link" data-url="https://www.steamgriddb.com">SteamGridDB</button>: extra covers, only if you add your own key</li>
-      <li>GitHub: where every port, and Cartridge itself, is downloaded from</li>
+      <li>GitHub: where every port, and Fulton itself, is downloaded from</li>
       <li>Fonts: <button class="btn-link" data-url="https://github.com/googlefonts/AntonFont">Anton</button>, <button class="btn-link" data-url="https://github.com/Omnibus-Type/ArchivoBlack">Archivo Black</button> and <button class="btn-link" data-url="https://rsms.me/inter/">Inter</button>, under the SIL Open Font License</li>
     </ul>
 
     <h3 class="about-h">Legal</h3>
     <div class="callout legal">
-      <p>Cartridge doesn't include, download or share any games, ROMs, BIOS files, firmware or keys. Use files dumped from games you own.</p>
-      <p>Cartridge isn't affiliated with or endorsed by Nintendo, Sony, Microsoft, Sega, Capcom, SNK or any other game company, or by the teams who make the ports. Game names, logos and box art belong to their owners.</p>
+      <p>Fulton doesn't include, download or share any games, ROMs, BIOS files, firmware or keys. Use files dumped from games you own.</p>
+      <p>Fulton isn't affiliated with or endorsed by Nintendo, Sony, Microsoft, Sega, Capcom, SNK or any other game company, or by the teams who make the ports. Game names, logos and box art belong to their owners.</p>
       <p>Metacritic scores are off unless you turn them on in Settings.</p>
-      <p>Cartridge is open source under the MIT license.</p>
+      <p>Fulton is open source under the MIT license.</p>
     </div>
     <p class="sub" style="margin-top:14px">Something slow or broken? <button class="btn-link" data-act-about="log">Open the log file</button> and send it along with your report.</p>
   </div>`;
@@ -544,7 +547,9 @@ function renderShelf() {
   const idOf = (x) => (romMode() ? `rom:${x.id}` : x.id);
   if (!all.some((g) => idOf(g) === ui.selected)) { ui.selected = all.length ? idOf(all[0]) : null; ui.selRow = null; }
   const body = !all.length && romMode()
-    ? `<div class="panel empty"><h2>${S.roms.length ? 'No ROMs match' : 'No ROMs yet'}</h2><p>${S.roms.length ? 'Try a different search or console.' : 'Point Cartridge at the folder where you keep your ROMs and they all show up here with their covers.'}</p>${S.roms.length ? '<button class="btn3d" data-act="clear-filters">Show everything</button>' : '<button class="btn3d" data-act="add-folder">+ Add your ROM folder</button>'}</div>`
+    ? `<div class="panel empty"><h2>${S.roms.length ? 'No ROMs match' : 'No ROMs yet'}</h2><p>${S.roms.length ? 'Try a different search or console.' : 'Point Fulton at the folder where you keep your ROMs and they all show up here with their covers.'}</p>${S.roms.length ? '<button class="btn3d" data-act="clear-filters">Show everything</button>' : '<button class="btn3d" data-act="add-folder">+ Add your ROM folder</button>'}</div>`
+    : !all.length && !S.games.length
+    ? '<div class="panel empty"><h2>Your shelf is empty</h2><p class="tagline">Your home base for recomps, decomps and remakes</p><p>Fulton doesn\'t come with any games. Open <b>Find more</b> to browse decomp, recomp and remake ports and add the ones you want. Each one needs your own ROM or game files.</p><button class="btn3d" data-view-go="discover">Find more games</button></div>'
     : !all.length
     ? ui.kind === 'favorites' && !S.games.some((g) => g.favorite)
       ? '<div class="panel empty"><h2>No favorites yet</h2><p>Open any game and click <b>☆ Add to favorites</b>. They all show up here, one click away.</p><button class="btn3d" data-type="">Show all games</button></div>'
@@ -660,9 +665,9 @@ const SYSTEM_FORMATS = {
 const DISC_SYSTEMS = new Set(['gc', 'wii', 'wiiu', 'switch', '3ds', 'segacd', 'saturn', 'dreamcast', 'ps1', 'ps2', 'ps3', 'psp', 'vita', 'xbox', 'x360', 'pcecd', 'neocd', '3do']);
 const FORMAT_NOTES = {
   arcade: 'Arcade games come as a .zip "set" named after the game, like sf2.zip or sfiii3.zip. Keep the name exactly as it is: emulators find games by it. Neo Geo, NAOMI, PGM and a few other boards also need their BIOS set (neogeo.zip, naomi.zip…) in the same folder.',
-  n64: '.z64 is the standard. Load a .n64 or .v64 dump in Cartridge and it is converted to .z64 for you.',
-  snes: '.sfc is the standard. Old .smc dumps with a copier header work too; Cartridge strips the header.',
-  switch: 'Your own dumped game (.nsp or .xci; compressed .nsz/.xcz too). Cartridge reads the name and title ID only; it never needs or touches console keys.',
+  n64: '.z64 is the standard. Load a .n64 or .v64 dump in Fulton and it is converted to .z64 for you.',
+  snes: '.sfc is the standard. Old .smc dumps with a copier header work too; Fulton strips the header.',
+  switch: 'Your own dumped game (.nsp or .xci; compressed .nsz/.xcz too). Fulton reads the name and title ID only; it never needs or touches console keys.',
   wiiu: 'A .wua file, a .wud/.wux disc image, or a dumped game folder (with code, content and meta inside).',
   ps3: 'A dumped game folder (with PS3_GAME inside), a disc .iso or a .pkg.',
   vita: 'A dumped game folder (with sce_sys inside) or a .vpk.',
@@ -670,7 +675,7 @@ const FORMAT_NOTES = {
   ps5: 'A dumped game folder (with sce_sys/param.json and eboot.bin inside).',
   xone: 'A dumped game folder (with MicrosoftGame.config or appxmanifest.xml inside).',
   xsx: 'A dumped game folder (with MicrosoftGame.config inside), in a folder named Xbox Series.',
-  switch2: 'A .nsp or .xci in a folder named Switch 2. Cartridge reads the name only and never needs or touches console keys.',
+  switch2: 'A .nsp or .xci in a folder named Switch 2. Fulton reads the name only and never needs or touches console keys.',
   dreamcast: '.gdi with its track files is the most common dump; .chd and .cdi work too.',
   xbox: 'A disc .iso (full or "xiso") or an extracted folder with default.xbe.',
   x360: 'A disc .iso or an extracted folder with default.xex.',
@@ -739,10 +744,10 @@ function renderDetail() {
         <button class="btn-link" data-act="open-repo">Project page</button>
         ${g.site ? '<button class="btn-link" data-act="open-site">Website</button>' : ''}
         ${g.release && g.release.url ? '<button class="btn-link" data-act="open-notes">Release notes</button>' : ''}
-        ${g.installed ? `<span>${g.installed.manual ? 'Your own copy' : `Installed ${esc(g.installed.tag)}`}</span><button class="btn-link" data-act="open-folder">Open folder</button><button class="btn-link danger" data-act="uninstall">${g.installed.manual ? 'Remove from Cartridge' : 'Uninstall'}</button>` : ''}
+        ${g.installed ? `<span>${g.installed.manual ? 'Your own copy' : `Installed ${esc(g.installed.tag)}`}</span><button class="btn-link" data-act="open-folder">Open folder</button><button class="btn-link danger" data-act="uninstall">${g.installed.manual ? 'Remove from Fulton' : 'Uninstall'}</button>` : ''}
         ${g.installed && !g.inSteam ? '<button class="btn-link steam" data-act="add-steam">＋ Add to Steam</button>' : ''}
         ${g.inSteam ? '<span class="in-steam">✓ In Steam</span><button class="btn-link danger" data-act="remove-steam">Remove from Steam</button>' : ''}
-        ${g.custom ? '<button class="btn-link danger" data-act="remove-custom">Remove from shelf</button>' : ''}
+        <button class="btn-link danger" data-act="remove-shelf" title="${g.installed ? 'Uninstalls the game (after asking), then takes it off your shelf' : 'Takes it off your shelf; add it back any time from Find more'}">Remove from shelf</button>
       </div>
     </div>`;
   hydrateArt(el);
@@ -899,7 +904,7 @@ function renderInfo() {
   const m = g.romMatch;
   const spec = g.rom || {};
   const facts = (rows) => `<dl class="facts">${rows.filter((r) => r && r[1]).map(([k, v, cls]) => `<dt>${esc(k)}</dt><dd class="${cls || ''}">${esc(v)}</dd>`).join('')}</dl>`;
-  const howRom = { 'beside-exe': 'Cartridge puts your ROM next to the game, which finds it on first launch and extracts its assets.', file: `Cartridge copies your ROM to ${spec.setup && spec.setup.path} inside the game folder.`, 'in-app': "The game asks for the ROM the first time you play, so you don't have to load it here. If you do, Cartridge checks it's the right version and copies its location to your clipboard so you can paste it in.", none: 'You supply the ROM when you build the project yourself.' }[(spec.setup && spec.setup.type) || 'in-app'];
+  const howRom = { 'beside-exe': 'Fulton puts your ROM next to the game, which finds it on first launch and extracts its assets.', file: `Fulton copies your ROM to ${spec.setup && spec.setup.path} inside the game folder.`, 'in-app': "The game asks for the ROM the first time you play, so you don't have to load it here. If you do, Fulton checks it's the right version and copies its location to your clipboard so you can paste it in.", none: 'You supply the ROM when you build the project yourself.' }[(spec.setup && spec.setup.type) || 'in-app'];
   const notes = g.release && cleanNotes(g.release.notes);
 
   el.innerHTML = `
@@ -955,9 +960,13 @@ function renderInfo() {
         <button class="btn-link" data-act="open-repo">Project page</button>
         ${g.site ? '<button class="btn-link" data-act="open-site">Website</button>' : ''}
         ${g.release && g.release.url ? '<button class="btn-link" data-act="open-notes">Full release notes</button>' : ''}
-        ${g.installed ? `<button class="btn-link" data-act="open-folder">Open game folder</button><button class="btn-link danger" data-act="uninstall">${g.installed.manual ? 'Remove from Cartridge' : 'Uninstall'}</button>` : ''}
+        ${g.installed ? `<button class="btn-link" data-act="open-folder">Open game folder</button>` : ''}
         ${g.installed && !g.inSteam ? '<button class="btn-link steam" data-act="add-steam">＋ Add to Steam</button>' : ''}
         ${g.inSteam ? '<button class="btn-link danger" data-act="remove-steam">Remove from Steam</button>' : ''}
+      </div>
+      <div class="info-foot">
+        ${g.installed ? `<button class="btn-link danger" data-act="uninstall">${g.installed.manual ? 'Remove from Fulton' : 'Uninstall'}</button>` : ''}
+        <button class="btn-link danger" data-act="remove-shelf" title="${g.installed ? 'Uninstalls the game (after asking), then takes it off your shelf' : 'Takes it off your shelf; add it back any time from Find more'}">Remove from shelf</button>
       </div>
     </div>`;
   hydrateArt(el);
@@ -1036,7 +1045,7 @@ function savesHtml(g) {
       <div><b>${esc(when(b.createdAt))}</b><span>${esc(REASONS[b.reason] || b.reason)} · ${b.files} file${b.files === 1 ? '' : 's'} · ${esc(fmtBytes(b.size) || '0 KB')}</span></div>
       ${g.installed ? `<button class="btn3d small purple" data-restore="${esc(b.id)}">Restore</button>` : ''}
     </div>`).join('');
-  return `${list.length ? `<div class="save-list">${rows}</div>${list.length > 8 ? `<p class="save-more">${list.length - 8} older backups in the backups folder.</p>` : ''}` : `<p>No backups yet. ${S.settings.autoBackup !== false ? 'Cartridge backs up automatically after you play and before updates.' : 'Automatic backups are off in Settings.'}</p>`}
+  return `${list.length ? `<div class="save-list">${rows}</div>${list.length > 8 ? `<p class="save-more">${list.length - 8} older backups in the backups folder.</p>` : ''}` : `<p>No backups yet. ${S.settings.autoBackup !== false ? 'Fulton backs up automatically after you play and before updates.' : 'Automatic backups are off in Settings.'}</p>`}
     <div class="info-actions">${g.installed ? '<button class="btn3d small cyan" data-act="backup-now">Back up now</button>' : ''}<button class="btn-link" data-act="open-backups">Open backups folder</button></div>`;
 }
 
@@ -1064,12 +1073,12 @@ function romHelpHtml(g) {
   if (h.discIds) {
     const kinds = { G: 'GameCube', R: 'Wii', S: 'Wii' };
     const ids = h.discIds.map((x) => `<code>${esc(x)}</code>${kinds[x[0]] ? ` (${kinds[x[0]]})` : ''}`).join(' or ');
-    versions = `<p class="rh-label">Discs that work</p><p class="rh-note">Your own disc of ${esc(g.title)} whose game ID starts with ${ids}. Cartridge reads the ID when you load it, so you don't need to check it yourself.</p>`;
+    versions = `<p class="rh-label">Discs that work</p><p class="rh-note">Your own disc of ${esc(g.title)} whose game ID starts with ${ids}. Fulton reads the ID when you load it, so you don't need to check it yourself.</p>`;
   } else if (h.targets.length) {
     versions = `<p class="rh-label">Exact version${h.targets.length > 1 ? 's' : ''} that work${h.targets.length > 1 ? '' : 's'}</p>
       <ul class="rh-targets">${h.targets.map((t) => `<li><span>${esc(t.name)}</span><span class="rh-sha"><code title="SHA-1 ${esc(t.sha1)}">SHA-1 ${esc(t.sha1.slice(0, 8).toLowerCase())}…</code><button class="btn-link" data-copy="${esc(t.sha1.toLowerCase())}">Copy</button></span></li>`).join('')}</ul>
       ${h.more ? `<p class="rh-note">…and ${h.more} more.</p>` : ''}
-      <p class="rh-note">Cartridge checks this for you when you load a ROM. The SHA-1 is the file's fingerprint${g.system === 'n64' ? ' (of the .z64 file)' : ''}, if you'd like to check it yourself.</p>`;
+      <p class="rh-note">Fulton checks this for you when you load a ROM. The SHA-1 is the file's fingerprint${g.system === 'n64' ? ' (of the .z64 file)' : ''}, if you'd like to check it yourself.</p>`;
   }
   const guide = h.guide;
   const open = guideOpen[g.id] ?? !g.romMatch;
@@ -1235,18 +1244,18 @@ function renderRoms() {
     </div>`;
   }).join('');
   $('#view').innerHTML = `<div class="panel">
-    ${panelHead('My ROMs', 'Everything you add is checked and matched to the ports that use it. Your ROM files stay where they are; Cartridge never copies your collection.')}
+    ${panelHead('My ROMs', 'Everything you add is checked and matched to the ports that use it. Your ROM files stay where they are; Fulton never copies your collection.')}
     <div class="rom-drop">
-      <p><b>Point Cartridge at your ROM folder</b>It searches every subfolder and zip, matches each ROM to its game, and checks the folder again every time it starts.</p>
+      <p><b>Point Fulton at your ROM folder</b>It searches every subfolder and zip, matches each ROM to its game, and checks the folder again every time it starts.</p>
       <button class="btn3d small cyan" data-act="add-folder">+ Add a folder</button>
       <button class="btn3d small purple" data-act="pick-files">Choose files</button>
     </div>
-    ${missing ? `<div class="callout warn-callout"><b>${missing.toLocaleString()} ROM${missing > 1 ? 's\'' : '\'s'} file${missing > 1 ? 's are' : ' is'} missing.</b> ${missing > 1 ? 'They were' : 'It was'} moved, deleted, or ${missing > 1 ? 'are' : 'is'} on a drive that isn't connected. If you moved them, add the new folder and Cartridge finds them again. <button class="btn-link" data-act="forget-missing">Remove missing from the list</button> <button class="help-q" data-help-tip="setup" title="Help">?</button></div>` : ''}
+    ${missing ? `<div class="callout warn-callout"><b>${missing.toLocaleString()} ROM${missing > 1 ? 's\'' : '\'s'} file${missing > 1 ? 's are' : ' is'} missing.</b> ${missing > 1 ? 'They were' : 'It was'} moved, deleted, or ${missing > 1 ? 'are' : 'is'} on a drive that isn't connected. If you moved them, add the new folder and Fulton finds them again. <button class="btn-link" data-act="forget-missing">Remove missing from the list</button> <button class="help-q" data-help-tip="setup" title="Help">?</button></div>` : ''}
     ${(S.settings.romFolders || []).length ? `<div class="folders">
       <div class="folders-head"><b>Watched folders</b><button class="btn-link" data-act="rescan">${S.scanning ? 'Scanning…' : 'Rescan now'}</button></div>
       ${S.settings.romFolders.map((f) => `<div class="folder-row"><span class="folder-ico"></span><span class="folder-path">${esc(f)}</span><button class="btn-link" data-open-path="${esc(f)}">Open</button><button class="btn-link danger" data-folder-remove="${esc(f)}">Stop watching</button></div>`).join('')}
     </div>` : ''}
-    ${S.roms.length ? `<div class="rows">${rows}</div>${S.roms.length > romsLimit ? `<div class="roms-more"><span>Showing ${romsLimit.toLocaleString()} of ${S.roms.length.toLocaleString()} ROMs.</span><button class="btn3d small purple" data-roms-more="1">Show 300 more</button><span class="sub">Tip: the Games screen's ROMs view can filter by console and search.</span></div>` : ''}<p class="cover-credit">Box art from <button class="btn-link" data-url="https://github.com/libretro-thumbnails">libretro-thumbnails</button>${S.settings.steamGridKey ? ' and <button class="btn-link" data-url="https://www.steamgriddb.com">SteamGridDB</button>' : ''}. Click <b>Cover</b> to use your own picture.</p>` : '<div class="empty"><h2>No ROMs yet</h2><p>Point Cartridge at the folder where you keep the ROMs you\'ve dumped from your own cartridges and discs. It finds them all and unlocks the matching games.</p><button class="btn3d" data-act="add-folder">+ Add your ROM folder</button></div>'}
+    ${S.roms.length ? `<div class="rows">${rows}</div>${S.roms.length > romsLimit ? `<div class="roms-more"><span>Showing ${romsLimit.toLocaleString()} of ${S.roms.length.toLocaleString()} ROMs.</span><button class="btn3d small purple" data-roms-more="1">Show 300 more</button><span class="sub">Tip: the Games screen's ROMs view can filter by console and search.</span></div>` : ''}<p class="cover-credit">Box art from <button class="btn-link" data-url="https://github.com/libretro-thumbnails">libretro-thumbnails</button>${S.settings.steamGridKey ? ' and <button class="btn-link" data-url="https://www.steamgriddb.com">SteamGridDB</button>' : ''}. Click <b>Cover</b> to use your own picture.</p>` : '<div class="empty"><h2>No ROMs yet</h2><p>Point Fulton at the folder where you keep the ROMs you\'ve dumped from your own cartridges and discs. It finds them all and unlocks the matching games.</p><button class="btn3d" data-act="add-folder">+ Add your ROM folder</button></div>'}
   </div>`;
   hydrateCovers($('#view'));
 }
@@ -1263,7 +1272,7 @@ let platformProgress = null; // { done, total } while the Windows / Mac check ru
 // How you get a port running, from the Find more lists: tags of [label, tooltip, class]
 function getTags(c) {
   const tags = [];
-  if (c.get === 'download') tags.push(['Download', 'Has a release Cartridge can install.', 'dl']);
+  if (c.get === 'download') tags.push(['Download', 'Has a release Fulton can install.', 'dl']);
   if (c.get === 'build') tags.push(['Build it yourself', "No release to download: you build it from the project's instructions, then use Add your copy. See Help → Games you build yourself.", 'build']);
   if (c.needsFiles) tags.push(['Needs game files', 'Needs files from your own console or disc (extracted game files, sometimes keys), not just a ROM. See Help → Games that need your game files.', 'files']);
   return tags;
@@ -1427,11 +1436,12 @@ function renderSettings() {
       <div class="field" id="appearance"><span>Colors</span>${themeSettingsHtml()}</div>
       <div class="field"><span>Background</span>
         <div class="bg-row">
-          <div class="bg-thumb" style="${s.backgroundImage ? `background-image:url('${fileUrl(s.backgroundImage).replace(/'/g, '%27')}')` : ''}">${s.backgroundImage ? '' : '<em>90s sunset (default)</em>'}</div>
+          <div class="bg-thumb" style="${s.backgroundImage ? `background-image:url('${fileUrl(s.backgroundImage).replace(/'/g, '%27')}')` : ''}">${s.backgroundImage ? '' : '<em>Default wallpaper</em>'}</div>
           <div class="bg-controls">
             <div class="inline"><button class="btn3d small cyan" data-act="pick-bg">Choose image</button>${s.backgroundImage ? '<button class="btn-link" data-act="clear-bg">Back to default</button>' : ''}</div>
             <label class="bg-dim"><span>Darken</span><input type="range" id="set-dim" min="0" max="90" step="5" value="${s.backgroundDim ?? 55}"><b id="dim-val">${s.backgroundDim ?? 55}%</b></label>
-            <small>PNG, JPG, WebP or GIF. Darkening keeps text readable on bright pictures.</small>
+            <label class="bg-dim"><span>See-through</span><input type="range" id="set-clear" min="0" max="100" step="5" value="${s.backgroundClear ?? 45}"><b id="clear-val">${s.backgroundClear ?? 45}%</b></label>
+            <small>PNG, JPG, WebP or GIF. Darken keeps text readable on bright pictures; See-through lets more of the picture show behind the panels.</small>
           </div>
         </div>
       </div>
@@ -1448,19 +1458,19 @@ function renderSettings() {
       <div class="field"><span>Controller</span>
         <div id="pad-live" class="pad-live"></div>
         <div id="pad-setup" class="pad-setup" hidden></div>
-        <small>Xbox controllers work straight away. PlayStation, Switch Pro, 8BitDo and other controllers work too; if one does the wrong thing, use <b>Set up buttons</b> and press each button when asked. If Steam is open and the controller moves the mouse pointer instead, that's Steam's desktop controller layout: change it in Steam → Settings → Controller, or close Steam while using Cartridge.</small></div>
+        <small>Xbox controllers work straight away. PlayStation, Switch Pro, 8BitDo and other controllers work too; if one does the wrong thing, use <b>Set up buttons</b> and press each button when asked. If Steam is open and the controller moves the mouse pointer instead, that's Steam's desktop controller layout: change it in Steam → Settings → Controller, or close Steam while using Fulton.</small></div>
       <div class="field"><span>ROM copies</span>
         <div id="rom-copies" class="sub">Checking…</div>
-        <small>Cartridge uses your ROMs where they are and never copies your collection. A copy is only made for a game that needs a different format (for example a .v64 converted to .z64), and only for that game's ROM.</small></div>
+        <small>Fulton uses your ROMs where they are and never copies your collection. A copy is only made for a game that needs a different format (for example a .v64 converted to .z64), and only for that game's ROM.</small></div>
       <div class="field"><span>Steam</span>
         <div class="inline"><button class="btn3d small purple" data-act="steam-all">Add all installed games to Steam</button></div>
         <small>Each game appears in your Steam library as a non-Steam game with box art, and works with Big Picture and Steam Input. Steam closes for a moment while games are added.</small></div>
       <label class="field toggle"><span>Metacritic scores</span>
         <div class="inline"><input type="checkbox" id="set-meta"${s.showMetacritic ? ' checked' : ''}><small>Show the Metascore in each game's info panel. Scores not in the catalog are looked up on metacritic.com. Off unless you turn it on.</small></div></label>
-      <label class="field toggle"><span>Cartridge updates</span>
-        <div class="inline"><input type="checkbox" id="set-updates"${s.checkUpdates === false ? '' : ' checked'}><small>Tell me when a new version of Cartridge is out (checks GitHub twice a day)</small></div></label>
-      <p class="about-ver">Cartridge <b>${esc(verLabel())}</b> <small>(build ${esc(S.version || '')})</small> · <button class="btn-link" data-open-path="${esc(S.changelog || '')}">What's new</button> · <button class="btn-link" data-view-go="about">About &amp; credits</button>${(S.links || {}).kofi ? ` · <button class="btn-link" data-url="${esc(S.links.kofi)}">♥ Support on Ko-fi</button>` : ''}</p>
-      <div class="callout">Cartridge never downloads ROMs or game data. It installs open-source ports from their official GitHub releases and uses ROMs you dump from games you own.</div>
+      <label class="field toggle"><span>Fulton updates</span>
+        <div class="inline"><input type="checkbox" id="set-updates"${s.checkUpdates === false ? '' : ' checked'}><small>Tell me when a new version of Fulton is out (checks GitHub twice a day)</small></div></label>
+      <p class="about-ver">Fulton <b>${esc(verLabel())}</b> <small>(build ${esc(S.version || '')})</small> · <button class="btn-link" data-open-path="${esc(S.changelog || '')}">What's new</button> · <button class="btn-link" data-view-go="about">About &amp; credits</button>${(S.links || {}).kofi ? ` · <button class="btn-link" data-url="${esc(S.links.kofi)}">♥ Support on Ko-fi</button>` : ''}</p>
+      <div class="callout">Fulton never downloads ROMs or game data. It installs open-source ports from their official GitHub releases and uses ROMs you dump from games you own.</div>
     </div>
   </div>`;
 }
@@ -1478,13 +1488,40 @@ async function loadRomCopies() {
 }
 
 // ---------------------------------------------------------------- colors (Settings)
-const swatch = (c) => `<span class="sw" style="background:${c.magenta}"></span><span class="sw" style="background:${c.hot}"></span><span class="sw" style="background:${c.gold}"></span><span class="sw" style="background:${c.cyan}"></span>`;
+const swatch = (c) => `<span class="sw" style="background:${c.accent}"></span><span class="sw" style="background:${c.wall1}"></span><span class="sw" style="background:${c.wall2}"></span>`;
+const hexToRgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+const rgbToHex = (r, g, b) => '#' + [r, g, b].map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+function hexToHsv(hex) {
+  const [r, g, b] = hexToRgb(hex).map((v) => v / 255);
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  let h = 0;
+  if (d) h = mx === r ? ((g - b) / d + 6) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [Math.round(h * 60), mx ? d / mx : 0, mx];
+}
+function hsvToHex(h, sat, v) {
+  const f = (n) => { const k = (n + h / 60) % 6; return v - v * sat * Math.max(0, Math.min(k, 4 - k, 1)); };
+  return rgbToHex(f(5) * 255, f(3) * 255, f(1) * 255);
+}
+
 function themeSettingsHtml() {
-  const t = S.settings.theme || { preset: 'arctic' };
+  const t = S.settings.theme || { preset: window.THEMES[0].id };
   const cur = window.themeColors(t);
   const presets = window.THEMES.map((x) => `<button class="theme-chip${t.preset === x.id ? ' on' : ''}" data-theme="${x.id}" title="${esc(x.name)}"><span class="sws">${swatch(x.colors)}</span>${esc(x.name)}</button>`).join('');
-  const custom = `<button class="theme-chip${t.preset === 'custom' ? ' on' : ''}" data-theme="custom" title="Pick your own colors"><span class="sws">${swatch(cur)}</span>Custom</button>`;
-  const pickers = t.preset === 'custom' ? `<div class="theme-custom">${window.THEME_KEYS.map(([k, label, tip]) => `<label class="color-pick" title="${esc(tip)}"><input type="color" data-theme-color="${k}" value="${esc(/^#[0-9a-f]{6}$/i.test(cur[k] || '') ? cur[k] : '#888888')}"><span><b>${esc(label)}</b><small>${esc(tip)}</small></span></label>`).join('')}</div>
+  const custom = `<button class="theme-chip${t.preset === 'custom' ? ' on' : ''}" data-theme="custom" title="Pick your own colors${t.saved ? ' (your colors are remembered)' : ''}"><span class="sws">${swatch(t.preset !== 'custom' && t.saved ? window.themeColors({ preset: 'custom', base: t.saved.base, custom: t.saved.custom }) : cur)}</span>Custom</button>`;
+  const pickers = t.preset === 'custom' ? `<div class="theme-custom">${window.THEME_KEYS.map(([k, label, tip]) => {
+    const hex = /^#[0-9a-f]{6}$/i.test(cur[k] || '') ? cur[k] : '#888888';
+    const [h, sat, val] = hexToHsv(hex);
+    const [r, g, b] = hexToRgb(hex);
+    return `<div class="color-pick" data-ck="${k}" data-h="${h}" title="${esc(tip)}">
+      <button type="button" class="cp-sw" data-cp-toggle="1" style="background:${hex}" aria-label="Open the ${esc(label)} color picker"></button>
+      <span class="cp-txt"><b>${esc(label)}</b><small>${esc(tip)}</small></span>
+      <input type="text" class="cp-hex" data-theme-color="${k}" value="${hex}" maxlength="7" spellcheck="false" autocomplete="off" aria-label="${esc(label)} color code">
+      <div class="cp-pop" hidden>
+        <div class="cp-sv" style="background-color:hsl(${h},100%,50%)"><i class="cp-knob" style="left:${sat * 100}%;top:${(1 - val) * 100}%"></i></div>
+        <div class="cp-hue"><i class="cp-knob" style="left:${(h / 360) * 100}%"></i></div>
+        <div class="cp-nums">${[['R', r, 'r'], ['G', g, 'g'], ['B', b, 'b']].map(([l, v, c]) => `<label>${l}<input type="number" min="0" max="255" value="${v}" data-num="${c}"></label>`).join('')}</div>
+      </div></div>`;
+  }).join('')}</div>
     <div class="inline"><button class="btn-link" data-act="theme-reset">Start again from ${esc((window.THEMES.find((x) => x.id === t.base) || window.THEMES[0]).name)}</button></div>` : '';
   const mode = backdropMode();
   const backdrop = [['wash', 'Color wash', 'A soft glow in the main color of the selected game\'s cover'], ['theme', 'Theme only', 'Just your theme behind the selected game'], ['blur', 'Blurred cover', 'The selected game\'s cover, blurred, behind it']]
@@ -1540,13 +1577,13 @@ function showRomReport(report, isScan = false) {
   const bad = report.filter((r) => r.status === 'error');
   const relinked = report.filter((r) => r.status === 'relinked').length;
   const forgot = report.filter((r) => r.status === 'forgotten').reduce((n, r) => n + r.count, 0);
-  if (relinked) toast(`Found ${relinked.toLocaleString()} ROM${relinked > 1 ? 's' : ''} in a new place`, 'Cartridge now uses your own files for them.', 'ok');
+  if (relinked) toast(`Found ${relinked.toLocaleString()} ROM${relinked > 1 ? 's' : ''} in a new place`, 'Fulton now uses your own files for them.', 'ok');
   if (forgot) toast(`${forgot.toLocaleString()} missing ROM${forgot > 1 ? 's' : ''} removed from the list`, 'Their files are gone from your watched folders. Your other files weren\'t touched.');
   report = report.filter((r) => r.status !== 'relinked' && r.status !== 'forgotten');
   if (isScan || added.length > 4) {
     const unlocks = new Set(added.flatMap((r) => r.unlocks));
     if (added.length) toast(`Found ${added.length} new ROM${added.length > 1 ? 's' : ''}!`, unlocks.size ? `Unlocked ${unlocks.size} game${unlocks.size > 1 ? 's' : ''}: ${[...unlocks].slice(0, 6).join(', ')}${unlocks.size > 6 ? '…' : ''}` : 'None of them match a game in the catalog yet.', 'ok');
-    else toast('No new ROMs found', dup ? `${dup} ROM${dup > 1 ? 's were' : ' was'} already in your library.` : 'Cartridge recognises games for every Nintendo, Sega, Sony and Xbox console up to Switch, plus PC Engine, Neo Geo, Atari and more: cartridge ROMs, disc images (.cue/.bin, .chd, .iso, .gdi), Switch .nsp/.xci, dumped game folders, and arcade .zip sets (CPS1/2/3, Neo Geo, NAOMI and more).', dup ? '' : 'warn');
+    else toast('No new ROMs found', dup ? `${dup} ROM${dup > 1 ? 's were' : ' was'} already in your library.` : 'Fulton recognises games for every Nintendo, Sega, Sony and Xbox console up to Switch, plus PC Engine, Neo Geo, Atari and more: cartridge ROMs, disc images (.cue/.bin, .chd, .iso, .gdi), Switch .nsp/.xci, dumped game folders, and arcade .zip sets (CPS1/2/3, Neo Geo, NAOMI and more).', dup ? '' : 'warn');
     if (bad.length) toast(`${bad.length} file${bad.length > 1 ? 's' : ''} skipped`, bad.slice(0, 2).map((r) => `${r.file}: ${r.error}`).join(' · '), 'warn');
     return;
   }
@@ -1556,7 +1593,7 @@ function showRomReport(report, isScan = false) {
   if (added.length > 4) toast(`${added.length - 4} more ROMs added`, '', 'ok');
   if (dup) toast(`${dup} already in your library`);
   for (const r of bad.slice(0, 3)) toast(`Skipped ${r.file}`, r.error, 'bad');
-  if (!report.length) toast('No ROMs found', 'Cartridge recognises games for every Nintendo, Sega, Sony and Xbox console up to Switch, plus PC Engine, Neo Geo, Atari and more: cartridge ROMs, disc images (.cue/.bin, .chd, .iso, .gdi), Switch .nsp/.xci, dumped game folders, and arcade .zip sets (CPS1/2/3, Neo Geo, NAOMI and more).', 'warn');
+  if (!report.length) toast('No ROMs found', 'Fulton recognises games for every Nintendo, Sega, Sony and Xbox console up to Switch, plus PC Engine, Neo Geo, Atari and more: cartridge ROMs, disc images (.cue/.bin, .chd, .iso, .gdi), Switch .nsp/.xci, dumped game folders, and arcade .zip sets (CPS1/2/3, Neo Geo, NAOMI and more).', 'warn');
 }
 
 /** Before an update: what changed, so you can decide. */
@@ -1594,7 +1631,7 @@ async function onAction(act, g, opts = {}) {
       const res = await guard(() => api.launch(g.id));
       if (res && res.needsRom) {
         // Only games that can't ask for the ROM themselves (like Perfect Dark) end up here
-        toast(`${g.port} needs its ROM loaded here`, "This game doesn't ask for a ROM itself. Load it once and Cartridge puts it where the game expects.", 'warn', [['Load ROM', () => loadRomForSelected()]]);
+        toast(`${g.port} needs its ROM loaded here`, "This game doesn't ask for a ROM itself. Load it once and Fulton puts it where the game expects.", 'warn', [['Load ROM', () => loadRomForSelected()]]);
         break;
       }
       if (res && res.ok && !res.alreadyRunning) {
@@ -1631,6 +1668,7 @@ async function onAction(act, g, opts = {}) {
       break;
     }
     case 'remove-custom': await guard(() => api.removeUserGame(g.id)); ui.selected = null; break;
+    case 'remove-shelf': try { if (g.installed && !(await api.uninstall(g.id))) break; await api.removeFromShelf(g.id); ui.selected = null; toast(`${g.port || g.title} removed from your shelf`, 'You can add it back from Find more.', 'ok'); } catch (e) { toast('Couldn\'t remove it', e.message, 'bad'); } break;
     default: break;
   }
 }
@@ -1664,11 +1702,21 @@ document.addEventListener('click', async (e) => {
     if (box) box.innerHTML = `<span>Colors</span>${themeSettingsHtml()}`;
     return guard(() => api.settings({ heroBackdrop: t.dataset.backdrop }));
   }
+  if (t.dataset.cpToggle) {
+    const pop = t.closest('.color-pick').querySelector('.cp-pop');
+    const open = pop.hidden;
+    document.querySelectorAll('.cp-pop').forEach((x) => { x.hidden = true; });
+    pop.hidden = !open;
+    return undefined;
+  }
   if (t.dataset.theme) {
-    const cur = S.settings.theme || { preset: 'arctic' };
-    if (t.dataset.theme !== 'custom') return setTheme({ preset: t.dataset.theme });
+    const cur = S.settings.theme || { preset: window.THEMES[0].id };
+    // your custom colors are remembered while you try other themes
+    const saved = cur.preset === 'custom' ? { base: cur.base, custom: cur.custom || {} } : cur.saved;
+    if (t.dataset.theme !== 'custom') return setTheme({ preset: t.dataset.theme, ...(saved ? { saved } : {}) });
     if (cur.preset === 'custom') return undefined;
-    return setTheme({ preset: 'custom', base: cur.preset || 'arctic', custom: {} });
+    if (saved) return setTheme({ preset: 'custom', base: saved.base, custom: saved.custom, saved });
+    return setTheme({ preset: 'custom', base: cur.preset || window.THEMES[0].id, custom: {} });
   }
   if (t.dataset.updateGo) { closeTip(); const g = S.games.find((x) => x.id === t.dataset.updateGo); return g ? onAction('install', g, { confirmed: true }) : undefined; }
   if (t.dataset.helpTip) return showTip(t.dataset.helpTip);
@@ -1749,7 +1797,7 @@ document.addEventListener('click', async (e) => {
   if (act === 'pick-files') return showRomReport(await guard(() => api.pickRoms('files')));
   if (act === 'pick-folder') return showRomReport(await guard(() => api.pickRoms('folder')));
   if (act === 'add-folder') return addFolder();
-  if (act === 'theme-reset') { const cur = S.settings.theme || {}; return setTheme({ preset: 'custom', base: cur.base || 'arctic', custom: {} }); }
+  if (act === 'theme-reset') { const cur = S.settings.theme || {}; return setTheme({ preset: 'custom', base: cur.base || window.THEMES[0].id, custom: {} }); }
   if (act === 'check-setup') { if (!setupState.running) runSetupCheck(); return; }
   if (act === 'forget-missing') { const n = await guard(() => api.forgetMissing()); if (n) toast(`Removed ${n.toLocaleString()} missing ROM${n > 1 ? 's' : ''} from the list`, '', 'ok'); return; }
   if (act === 'rescan') { t.textContent = 'Scanning…'; const r = await guard(() => api.scanRomFolders(true)); showRomReport(r || [], true); return render(); }
@@ -1857,20 +1905,76 @@ document.addEventListener('input', (e) => {
     clearTimeout(window.__dimSave);
     window.__dimSave = setTimeout(() => api.settings({ backgroundDim: Number(e.target.value) }), 300);
   }
+  if (e.target.id === 'set-clear') {
+    document.body.style.setProperty('--clear', String(e.target.value / 100));
+    $('#clear-val').textContent = `${e.target.value}%`;
+    clearTimeout(window.__clearSave);
+    window.__clearSave = setTimeout(() => api.settings({ backgroundClear: Number(e.target.value) }), 300);
+  }
   if (e.target.id === 'disc-filter') { disc.q = e.target.value; disc.limit = 60; renderDiscoverList(); }
   if (e.target.id === 'help-q') { helpUi.q = e.target.value; renderHelpBody(); }
-  if (e.target.dataset && e.target.dataset.themeColor) {
-    // live while dragging; saved a moment after you stop
-    const cur = S.settings.theme || { preset: 'custom', base: 'arctic' };
-    const theme = { ...cur, preset: 'custom', custom: { ...(cur.custom || {}), [e.target.dataset.themeColor]: e.target.value } };
-    S.settings.theme = theme;
-    window.applyTheme(theme);
-    applyBackground.themeSig = JSON.stringify(theme);
-    document.querySelectorAll('[data-theme="custom"] .sws').forEach((el) => { el.innerHTML = swatch(window.themeColors(theme)); });
-    clearTimeout(setTheme.t);
-    setTheme.t = setTimeout(() => guard(() => api.settings({ theme })), 300);
+  if (e.target.dataset && (e.target.dataset.themeColor || e.target.dataset.num)) {
+    // a color code typed in, or the R / G / B numbers
+    const row = e.target.closest('.color-pick');
+    let hex;
+    if (e.target.dataset.num) {
+      hex = rgbToHex(...['r', 'g', 'b'].map((c) => Number(row.querySelector(`[data-num="${c}"]`).value) || 0));
+    } else {
+      hex = e.target.value.trim();
+      if (/^[0-9a-f]{6}$/i.test(hex)) hex = '#' + hex;
+      if (!/^#[0-9a-f]{6}$/i.test(hex)) return; // still typing
+    }
+    setCustomColor(row, hex.toLowerCase(), { keep: e.target });
   }
 });
+
+/** Show a color everywhere it appears (swatch, code, numbers, picker) and use it live; saved a moment after you stop. */
+function setCustomColor(row, hex, { keep, keepHue } = {}) {
+  const key = row.dataset.ck;
+  let [h, sat, val] = hexToHsv(hex);
+  if (keepHue || !sat || !val) h = Number(row.dataset.h) || h; // grays have no hue of their own: keep the slider where it was
+  row.dataset.h = String(h);
+  row.querySelector('.cp-sw').style.background = hex;
+  const hexIn = row.querySelector('.cp-hex'); if (hexIn !== keep) hexIn.value = hex;
+  hexToRgb(hex).forEach((v, i) => { const n = row.querySelector(`[data-num="${'rgb'[i]}"]`); if (n !== keep) n.value = v; });
+  const sv = row.querySelector('.cp-sv'); sv.style.backgroundColor = `hsl(${h},100%,50%)`;
+  const k = sv.querySelector('.cp-knob'); k.style.left = `${sat * 100}%`; k.style.top = `${(1 - val) * 100}%`;
+  row.querySelector('.cp-hue .cp-knob').style.left = `${(h / 360) * 100}%`;
+  const cur = S.settings.theme || { preset: 'custom', base: window.THEMES[0].id };
+  const theme = { ...cur, preset: 'custom', custom: { ...(cur.custom || {}), [key]: hex } };
+  S.settings.theme = theme;
+  window.applyTheme(theme);
+  applyBackground.themeSig = JSON.stringify(theme);
+  document.querySelectorAll('[data-theme="custom"] .sws').forEach((el) => { el.innerHTML = swatch(window.themeColors(theme)); });
+  clearTimeout(setTheme.t);
+  setTheme.t = setTimeout(() => guard(() => api.settings({ theme })), 300);
+}
+
+// dragging in the color square or on the hue strip
+let cpDrag = null;
+function cpMove(e) {
+  if (!cpDrag) return;
+  const { row, kind, box } = cpDrag;
+  const r = box.getBoundingClientRect();
+  const x = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+  const y = Math.max(0, Math.min(1, (e.clientY - r.top) / r.height));
+  const [h0, s0, v0] = hexToHsv(row.querySelector('.cp-hex').value.match(/^#[0-9a-f]{6}$/i) ? row.querySelector('.cp-hex').value : '#888888');
+  const h = Number(row.dataset.h) || h0;
+  const hex = kind === 'sv' ? hsvToHex(h, x, 1 - y) : hsvToHex(x * 360, s0 || 0.001, v0 || 0.001);
+  if (kind === 'hue') row.dataset.h = String(Math.round(x * 360));
+  setCustomColor(row, hex, { keepHue: true });
+  if (kind === 'hue') row.dataset.h = String(Math.round(x * 360));
+  if (kind === 'hue') { row.querySelector('.cp-sv').style.backgroundColor = `hsl(${row.dataset.h},100%,50%)`; row.querySelector('.cp-hue .cp-knob').style.left = `${x * 100}%`; }
+}
+document.addEventListener('pointerdown', (e) => {
+  const box = e.target.closest && e.target.closest('.cp-sv, .cp-hue');
+  if (!box) return;
+  e.preventDefault();
+  cpDrag = { row: box.closest('.color-pick'), kind: box.classList.contains('cp-sv') ? 'sv' : 'hue', box };
+  cpMove(e);
+});
+document.addEventListener('pointermove', cpMove);
+document.addEventListener('pointerup', () => { cpDrag = null; });
 
 $('#search').addEventListener('input', (e) => {
   ui.query = e.target.value;
@@ -1884,12 +1988,12 @@ $('#update-pill').addEventListener('click', () => { if (S.appUpdate) api.openUrl
 /** Keep the About page's update line current without re-rendering the credits. */
 function refreshAboutUpdate() {
   const st = $('#update-status');
-  if (st && S.appUpdate) st.innerHTML = `<b class="gold">A new Cartridge is out (build ${esc(S.appUpdate.version)}).</b>`;
+  if (st && S.appUpdate) st.innerHTML = `<b class="gold">A new Fulton is out (build ${esc(S.appUpdate.version)}).</b>`;
 }
 $('#btn-load-rom').addEventListener('click', async () => showRomReport(await guard(() => api.pickRoms('files'))));
 
 async function addFolder() {
-  toast('Pick your ROM folder', 'Choose the top folder. Every subfolder and zip inside is searched, and new ROMs are picked up each time Cartridge starts.');
+  toast('Pick your ROM folder', 'Choose the top folder. Every subfolder and zip inside is searched, and new ROMs are picked up each time Fulton starts.');
   const report = await guard(() => api.addRomFolder());
   if (report) showRomReport(report, true);
 }
@@ -1940,7 +2044,7 @@ const FILTERS = ['all', 'available', 'installed', 'ready', 'needs'];
 // Controllers report their buttons in one of two ways:
 // - the "standard" layout (Xbox, and most PlayStation / Switch Pro controllers on Windows): fixed button numbers
 // - their own layout (many 8BitDo, generic USB and some Bluetooth pads): button numbers vary and the D-pad is often a "hat"
-// For the second kind Cartridge uses a layout for the brand, or the one you set up in Settings → Controller.
+// For the second kind Fulton uses a layout for the brand, or the one you set up in Settings → Controller.
 const PAD_KEYS = ['a', 'b', 'x', 'y', 'lb', 'rb', 'lt', 'rt', 'view', 'start', 'up', 'down', 'left', 'right'];
 const btn = (i) => ({ t: 'b', i });
 const hat = (dir) => ({ t: 'h', dir });
@@ -2302,6 +2406,7 @@ function applyBackground() {
   const sky = document.querySelector('.sky');
   sky.style.setProperty('--bg-url', img ? `url("${fileUrl(img)}")` : 'none');
   sky.style.setProperty('--bg-dim', String((S.settings.backgroundDim ?? 55) / 100));
+  document.body.style.setProperty('--clear', String((S.settings.backgroundClear ?? 45) / 100));
 }
 
 api.onState((s) => { S = s; render(); });

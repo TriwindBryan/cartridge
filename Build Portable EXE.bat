@@ -1,5 +1,5 @@
 @echo off
-title Build Cartridge
+title Build Fulton
 cd /d "%~dp0"
 
 where node >nul 2>nul

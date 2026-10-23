@@ -4,7 +4,7 @@
 const API = 'https://api.github.com';
 
 function headers(token) {
-  const h = { Accept: 'application/vnd.github+json', 'User-Agent': 'Cartridge-Launcher' };
+  const h = { Accept: 'application/vnd.github+json', 'User-Agent': 'Fulton-Launcher' };
   if (token) h.Authorization = `Bearer ${token}`;
   return h;
 }

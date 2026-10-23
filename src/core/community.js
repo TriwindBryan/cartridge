@@ -66,7 +66,7 @@ function candidatesFromList(list) {
 }
 
 async function fetchJson(url) {
-  const res = await fetch(url, { headers: { 'User-Agent': 'Cartridge-Launcher' } });
+  const res = await fetch(url, { headers: { 'User-Agent': 'Fulton-Launcher' } });
   if (!res.ok) throw new Error(`Couldn't load the community catalog (${res.status}).`);
   return res.json();
 }
@@ -125,11 +125,11 @@ function mergeCandidates(quiver, others) {
 async function fetchCommunity() {
   const [q, r] = await Promise.allSettled([fetchQuiver(), recompendium.fetchRecompendium()]);
   if (q.status === 'rejected' && r.status === 'rejected') throw q.reason;
-  const extras = EXTRAS.map((e) => ({ ...recompendium.candidateFromEntry(e, e.category ? 'ports' : 'recomps'), list: 'Cartridge', from: 'cartridge' }));
+  const extras = EXTRAS.map((e) => ({ ...recompendium.candidateFromEntry(e, e.category ? 'ports' : 'recomps'), list: 'Fulton', from: 'cartridge' }));
   return mergeCandidates(q.status === 'fulfilled' ? q.value : [], [...(r.status === 'fulfilled' ? r.value : []), ...extras]);
 }
 
-/** Turn a community entry into a Cartridge game entry. */
+/** Turn a community entry into a Fulton game entry. */
 function gameFromCandidate(c) {
   const id = `community-${slug(c.repo)}${c.assetFilter ? '-' + slug(c.assetFilter) : ''}`;
   return {

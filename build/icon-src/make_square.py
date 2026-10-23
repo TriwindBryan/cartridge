@@ -1,4 +1,4 @@
-# Builds Cartridge's square app icon (a rounded tile with the glowing cartridge on a 90s sunset).
+# Builds Fulton's square app icon (a rounded blue tile with a balloon lifting a cartridge).
 # Needs the cartridge renders from render.py (icon-1024.png, icon-small-256.png) in the folder given.
 # Run: python3 make_svg.py && python3 render.py . && python3 make_square.py . ../
 #   writes ../icon.png (512, Windows/Linux/in-app), ../icon-mac.png (1024, macOS layout), ../icon.icns (macOS) and ../icon.ico
@@ -24,40 +24,8 @@ def gradient(w, h, stops):
     return g.resize((w, h))
 
 def tile(size, simple=False):
-    """The square artwork at size x size (no rounding yet)."""
-    S = size * 4 if size < 256 else size  # draw small sizes big, then shrink: smoother
-    img = gradient(S, S, [(0, (16, 4, 28)), (0.55, (58, 8, 30)), (1, (200, 22, 29))]).convert('RGBA')
-    d = ImageDraw.Draw(img)
-    hz = int(S * 0.70)  # horizon
-    if not simple:
-        # sunset: a gold-to-red half sun with the classic stripes cut out
-        r = int(S * 0.30)
-        sun = gradient(2 * r, r, [(0, (255, 214, 72)), (0.6, (255, 123, 28)), (1, (226, 52, 43))]).convert('RGBA')
-        mask = Image.new('L', (2 * r, r), 0)
-        ImageDraw.Draw(mask).ellipse([0, 0, 2 * r, 2 * r], fill=255)
-        md = ImageDraw.Draw(mask)
-        for i in range(5):
-            y = int(r * (0.45 + i * 0.12))
-            md.rectangle([0, y, 2 * r, y + max(2, int(r * (0.02 + i * 0.012)))], fill=0)
-        img.paste(sun, (S // 2 - r, hz - r), mask)
-        # neon grid floor
-        floor = Image.new('RGBA', (S, S - hz), (90, 6, 20, 255))
-        img.paste(floor, (0, hz))
-        lw = max(2, S // 170)
-        for i in range(1, 7):
-            y = hz + int((S - hz) * (i / 6) ** 1.8)
-            d.line([(0, y), (S, y)], fill=(255, 75, 110, 255), width=lw)
-        for i in range(-6, 7):
-            d.line([(S // 2 + i * S * 0.045, hz), (S // 2 + i * S * 0.30, S)], fill=(255, 75, 110, 255), width=lw)
-        d.line([(0, hz), (S, hz)], fill=(255, 210, 63, 255), width=lw + 1)
-    # the cartridge (with its yellow glow) on top
-    a = art_small if simple else art
-    bbox = a.getbbox()
-    a = a.crop(bbox)
-    scale = (0.86 if simple else 0.80) * S / max(a.size)
-    a = a.resize((int(a.width * scale), int(a.height * scale)), Image.LANCZOS)
-    img.alpha_composite(a, ((S - a.width) // 2, int(S * 0.47 - a.height / 2)))
-    return img.resize((size, size), Image.LANCZOS) if S != size else img
+    """The square artwork at size x size (no rounding yet): the balloon render, shrunk."""
+    return (art_small if simple else art).resize((size, size), Image.LANCZOS)
 
 def rounded(img, radius_ratio):
     S = img.width

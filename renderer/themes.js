@@ -1,44 +1,64 @@
-// Color themes for Settings → Colors. The first one is the default. Each sets the few base colors; everything else (darker shades, the sky,
-// glows and the grid floor) is mixed from them in styles.css.
+// Color themes for Settings → Colors. The first one is the default.
+// A theme is one accent color (buttons, links, the selected item) plus two soft glows for the wallpaper behind the window.
+// Everything else (the dark grays, text, borders) stays the same, like macOS dark mode with a different accent color.
 'use strict';
 
 window.THEMES = [
-  { id: 'arctic', name: 'Cartridge Frost', colors: { magenta: '#1f7fb0', hot: '#43b8e8', gold: '#f2fbff', orange: '#9fe4ff', cyan: '#b3f0ff', glow1: '#bff1ff', glow2: '#3aa7d6', glow3: '#0d3a52', skyTop: '#020509', skyMid: '#081624' } },
-  { id: 'cartridge', name: 'Cartridge Red', colors: { magenta: '#c8161d', hot: '#e2342b', gold: '#ffd23f', orange: '#ff7b1c', cyan: '#19e3ff', glow1: '#ff8a3d', glow2: '#d9241c', glow3: '#6e0d14', skyTop: '#04030c', skyMid: '#0f0a22' } },
-  { id: 'midnight', name: 'Midnight Blue', colors: { magenta: '#1d48c4', hot: '#3b7bff', gold: '#ffd23f', orange: '#ff9f2e', cyan: '#4fe3ff', glow1: '#5aa0ff', glow2: '#2a5bd8', glow3: '#0e1f5c', skyTop: '#02030c', skyMid: '#070d26' } },
-  { id: 'synthwave', name: 'Synthwave', colors: { magenta: '#7b2cd6', hot: '#a64bff', gold: '#ffd23f', orange: '#ff7b1c', cyan: '#19e3ff', glow1: '#ff7b1c', glow2: '#b5179e', glow3: '#3c0a5c', skyTop: '#05020f', skyMid: '#140a2e' } },
-  { id: 'toxic', name: 'Toxic Green', colors: { magenta: '#178c3a', hot: '#2fd158', gold: '#e8ff3f', orange: '#b8e02a', cyan: '#7dffb0', glow1: '#b8e02a', glow2: '#22a447', glow3: '#0b3d1c', skyTop: '#020803', skyMid: '#071a0d' } },
-  { id: 'sunset', name: 'Sunset Orange', colors: { magenta: '#c95412', hot: '#ff7a2e', gold: '#ffe45c', orange: '#ffb02e', cyan: '#3fd8ff', glow1: '#ffd25c', glow2: '#f26a1b', glow3: '#6e2a0d', skyTop: '#06030a', skyMid: '#1c0d1c' } },
-  { id: 'gameboy', name: 'Pocket Green', colors: { magenta: '#306230', hot: '#5f8f1f', gold: '#c4d93a', orange: '#9bbc0f', cyan: '#9bbc0f', glow1: '#9bbc0f', glow2: '#5f8f1f', glow3: '#1f3a1f', skyTop: '#0b140b', skyMid: '#132313' } },
-  { id: 'steel', name: 'Steel', colors: { magenta: '#4d5566', hot: '#7d8aa3', gold: '#f2f2f2', orange: '#c9ced8', cyan: '#9ecbff', glow1: '#aeb8c9', glow2: '#5c677d', glow3: '#20242d', skyTop: '#040507', skyMid: '#0d1016' } },
+  { id: 'fulton', name: 'Fulton Blue', colors: { accent: '#0a84ff', wall1: '#1a4a8a', wall2: '#0e3566', base: '#0a1222' } },
+  { id: 'gold', name: 'Alliance Gold', colors: { accent: '#e8b54a', wall1: '#1d3f78', wall2: '#0b1e3f', base: '#070d1c' } },
+  { id: 'arctic', name: 'Frost', colors: { accent: '#64d2ff', wall1: '#1c5e7e', wall2: '#0b2f45', base: '#06141d' } },
+  { id: 'cartridge', name: 'Classic Red', colors: { accent: '#ff453a', wall1: '#7a1a1a', wall2: '#3a0d14', base: '#12060a' } },
+  { id: 'midnight', name: 'Midnight', colors: { accent: '#5e8bff', wall1: '#1d2f78', wall2: '#0e1440', base: '#070a1c' } },
+  { id: 'synthwave', name: 'Synthwave', colors: { accent: '#bf5af2', wall1: '#5b1f8a', wall2: '#2a0e4f', base: '#0d0618' } },
+  { id: 'toxic', name: 'Toxic Green', colors: { accent: '#30d158', wall1: '#13602b', wall2: '#0a3317', base: '#05100a' } },
+  { id: 'sunset', name: 'Sunset', colors: { accent: '#ff9f0a', wall1: '#7a3a12', wall2: '#3a1a12', base: '#120907' } },
+  { id: 'gameboy', name: 'Pocket Green', colors: { accent: '#9bbc0f', wall1: '#2f4a1f', wall2: '#1a2e14', base: '#0a1208' } },
+  { id: 'steel', name: 'Graphite', colors: { accent: '#9aa5b8', wall1: '#343a46', wall2: '#1b1f27', base: '#0b0d11' } },
 ];
 
 // The colors you can change in Custom, with plain names
 window.THEME_KEYS = [
-  ['magenta', 'Main color', 'Panels, borders, the logo shadow'],
-  ['hot', 'Accent', 'Selected chips, buttons and glows'],
-  ['gold', 'Highlight', 'The selected tab, big buttons, scores'],
-  ['cyan', 'Links & grid', 'Links, the search box and the grid floor'],
-  ['glow1', 'Horizon glow', 'The sunset at the bottom of the sky'],
-  ['skyMid', 'Sky', 'The night sky behind everything'],
+  ['accent', 'Accent', 'Buttons, links, the selected item and highlights'],
+  ['wall1', 'Background glow', 'The soft color behind the window, top left'],
+  ['wall2', 'Second glow', 'The soft color behind the window, bottom right'],
 ];
+
+// Settings saved by earlier versions used other color names; map them so nobody's theme changes by surprise.
+const OLD_KEYS = { hot: 'accent', glow2: 'wall1', glow3: 'wall2', skyMid: 'base' };
 
 /** The colors to use: a preset, or your custom colors on top of the preset they started from. */
 window.themeColors = function themeColors(theme) {
   const t = theme || {};
-  const base = (window.THEMES.find((x) => x.id === (t.preset === 'custom' ? t.base : t.preset)) || window.THEMES[0]).colors;
+  const find = (id) => window.THEMES.find((x) => x.id === id);
+  const base = (find(t.preset === 'custom' ? t.base : t.preset) || window.THEMES[0]).colors;
   if (t.preset !== 'custom') return { ...base };
-  const c = { ...base, ...(t.custom || {}) };
-  // the in-between sky and glow shades follow the custom colors
-  if (t.custom && t.custom.hot) c.glow2 = t.custom.hot;
-  if (t.custom && t.custom.magenta) c.glow3 = `color-mix(in srgb, ${t.custom.magenta} 55%, #000)`;
-  if (t.custom && t.custom.skyMid) c.skyTop = `color-mix(in srgb, ${t.custom.skyMid} 35%, #000)`;
+  const c = { ...base };
+  for (const [k, v] of Object.entries(t.custom || {})) {
+    if (!/^#[0-9a-f]{6}$/i.test(String(v || ''))) continue;
+    if (c[k] !== undefined) c[k] = v;
+    else if (OLD_KEYS[k]) c[OLD_KEYS[k]] = v;
+  }
   return c;
+};
+
+/** White or near-black text for something filled with this color (a pale accent needs dark text). */
+window.inkFor = function inkFor(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''));
+  if (!m) return '#ffffff';
+  const n = parseInt(m[1], 16);
+  const lin = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+  const L = 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+  return L > 0.42 ? '#10131a' : '#ffffff';
 };
 
 window.applyTheme = function applyTheme(theme) {
   const c = window.themeColors(theme);
   const r = document.documentElement.style;
-  const map = { magenta: '--magenta', hot: '--hot', gold: '--gold', orange: '--orange', cyan: '--cyan', glow1: '--glow1', glow2: '--glow2', glow3: '--glow3', skyTop: '--sky-top', skyMid: '--sky-mid' };
-  for (const [k, v] of Object.entries(map)) if (c[k]) r.setProperty(v, c[k]);
+  r.setProperty('--accent', c.accent);
+  r.setProperty('--on-accent', window.inkFor(c.accent));
+  r.setProperty('--wall1', c.wall1);
+  r.setProperty('--wall2', c.wall2);
+  r.setProperty('--wall-base', c.base || '#0a1222');
+  // the older style rules still read these names: they all follow the accent now
+  for (const k of ['--magenta', '--hot', '--gold', '--cyan', '--orange']) r.setProperty(k, c.accent);
 };

@@ -26,7 +26,7 @@ async function latestAssetNames(repo, token, fetchImpl = fetch) {
       throw e;
     }
   }
-  const head = { 'User-Agent': 'Cartridge-Launcher', Accept: 'text/html' };
+  const head = { 'User-Agent': 'Fulton-Launcher', Accept: 'text/html' };
   const res = await fetchImpl(`https://github.com/${repo}/releases/latest`, { headers: head });
   if (res.status === 429) { const e = new Error('GitHub is busy'); e.code = 'RATE_LIMIT'; throw e; }
   if (res.status === 404) return { tag: null, names: [] };

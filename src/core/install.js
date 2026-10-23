@@ -11,7 +11,7 @@ const crypto = require('crypto');
 /** Stream a URL to disk, reporting progress (0..1). Verifies a GitHub sha256 digest when given. */
 async function download(url, dest, { onProgress, signal, digest, token } = {}) {
   const res = await fetch(url, {
-    headers: { 'User-Agent': 'Cartridge-Launcher', Accept: 'application/octet-stream', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    headers: { 'User-Agent': 'Fulton-Launcher', Accept: 'application/octet-stream', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     redirect: 'follow', signal,
   });
   if (!res.ok || !res.body) throw new Error(`Download failed (${res.status})`);

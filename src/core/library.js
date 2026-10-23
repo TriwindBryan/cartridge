@@ -25,9 +25,18 @@ const platforms = require('./platforms');
 const DAT_BASE = 'https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/';
 const RELEASE_TTL = 6 * 60 * 60 * 1000;
 
+/** ~/Fulton for new installs; someone who already has the old ~/Cartridge folder keeps using it (their games are in there). */
+function defaultLibraryDir() {
+  const home = os.homedir();
+  const next = path.join(home, 'Fulton'); const old = path.join(home, 'Cartridge');
+  try { if (!fs.existsSync(next) && fs.existsSync(old)) return old; } catch { /* fall through */ }
+  return next;
+}
+
 class Library extends EventEmitter {
-  constructor({ dataDir, catalogFile, platform = process.platform, hooks = {} }) {
+  constructor({ dataDir, catalogFile, platform = process.platform, hooks = {}, startEmpty = false }) {
     super();
+    this.startEmpty = startEmpty; // true in the app: a new install starts with an empty shelf
     this.dataDir = dataDir;
     this.catalogFile = catalogFile;
     this.platform = platform;
@@ -39,7 +48,7 @@ class Library extends EventEmitter {
     } catch { this.version = ''; this.links = {}; }
     this.statePath = path.join(dataDir, 'state.json');
     this.state = {
-      settings: { libraryDir: path.join(os.homedir(), 'Cartridge'), githubToken: '', extraCatalogUrl: '', romFolders: [], showMetacritic: false, welcomeSeen: false, checkUpdates: true, backgroundImage: '', backgroundDim: 55, heroBackdrop: 'wash', backupDir: '', autoBackup: true, steamGridKey: '' },
+      settings: { libraryDir: defaultLibraryDir(), githubToken: '', extraCatalogUrl: '', romFolders: [], showMetacritic: false, welcomeSeen: false, checkUpdates: true, backgroundImage: '', backgroundDim: 55, backgroundClear: 45, heroBackdrop: 'wash', backupDir: '', autoBackup: true, steamGridKey: '' },
       installed: {}, roms: [], romOverride: {}, releases: {}, userGames: [], scanIndex: {}, steam: {}, covers: {},
     };
     this.dats = {};
@@ -59,7 +68,7 @@ class Library extends EventEmitter {
       const saved = JSON.parse(await fsp.readFile(this.statePath, 'utf8'));
       hadState = true;
       this.state = { ...this.state, ...saved, settings: { ...this.state.settings, ...(saved.settings || {}) } };
-      // which download fits depends on Cartridge's version and the computer, so re-check them when either changes
+      // which download fits depends on Fulton's version and the computer, so re-check them when either changes
       const releasesFor = `${this.version}|${this.platform}|${process.arch}`;
       if (this.state.releasesFor !== releasesFor) { this.state.releases = {}; this.state.releasesFor = releasesFor; }
     } catch { /* first run */ }
@@ -72,6 +81,12 @@ class Library extends EventEmitter {
     this.remoteGames = [];
     if (this.state.settings.extraCatalogUrl) {
       try { this.remoteGames = (await (await fetch(this.state.settings.extraCatalogUrl)).json()).games || []; } catch { /* offline */ }
+    }
+    // The shelf: only games you added (or installed) show under Games. Someone who already had Fulton keeps their whole shelf.
+    if (!this.state.shelf) {
+      this.state.shelf = {};
+      if (hadState || !this.startEmpty) for (const g of [...this.baseGames, ...this.remoteGames]) this.state.shelf[g.id] = true;
+      if (hadState) await this.save();
     }
     // Remember when each game first appeared, for "Recently added". Games present on the very first run count as the starting collection (0).
     const seen = this.state.firstSeen || (this.state.firstSeen = {});
@@ -103,6 +118,35 @@ class Library extends EventEmitter {
     return [...byId.values()];
   }
 
+  /** Is this game on your shelf (added by you, or installed)? */
+  onShelf(g) {
+    const id = typeof g === 'string' ? g : g.id;
+    const game = typeof g === 'string' ? this.games.find((x) => x.id === id) : g;
+    return !!(this.state.shelf || {})[id] || !!this.state.installed[id] || !!(game && this.state.userGames.some((u) => u.id === id));
+  }
+
+  /** Put a built-in port on the shelf. */
+  async addToShelf(id) {
+    const g = this.game(id);
+    (this.state.shelf || (this.state.shelf = {}))[id] = true;
+    (this.state.firstSeen || (this.state.firstSeen = {}))[id] = Date.now();
+    await this.save();
+    this.emitChange();
+    this.refreshReleases({ ids: [id] }).catch(() => {});
+    return g;
+  }
+
+  /** Take a game off the shelf. Installed games must be uninstalled first, so nothing is left behind. */
+  async removeFromShelf(id) {
+    if (this.state.installed[id]) throw new Error('Uninstall the game first, then remove it from your shelf.');
+    if (this.running.has(id)) throw new Error('Close the game first.');
+    if (this.state.shelf) delete this.state.shelf[id];
+    this.state.userGames = this.state.userGames.filter((x) => x.id !== id);
+    if (this.state.favorites) delete this.state.favorites[id];
+    await this.save();
+    this.emitChange();
+  }
+
   game(id) {
     const g = this.games.find((x) => x.id === id);
     if (!g) throw new Error(`Unknown game ${id}`);
@@ -132,7 +176,7 @@ class Library extends EventEmitter {
       if (g.system === 'arcade') list.push(...arcadeRoms.filter((r) => r.system !== 'arcade'));
       return list;
     };
-    const games = this.games.map((g) => {
+    const games = this.games.filter((g) => this.onShelf(g)).map((g) => {
       const installed = this.state.installed[g.id] || null;
       const rel = this.state.releases[g.id];
       const match = romdb.bestRomForGame(g, candidates(g), this.state.romOverride[g.id]);
@@ -182,7 +226,7 @@ class Library extends EventEmitter {
   // ---------- releases ----------
   async refreshReleases({ force = false, ids } = {}) {
     const token = this.state.settings.githubToken;
-    const todo = this.games.filter((g) => !g.sourceOnly && g.repo && (!ids || ids.includes(g.id)));
+    const todo = this.games.filter((g) => this.onShelf(g) && !g.sourceOnly && g.repo && (!ids || ids.includes(g.id)));
     let changed = false;
     await Promise.all(todo.map(async (g) => {
       const cached = this.state.releases[g.id];
@@ -335,7 +379,7 @@ class Library extends EventEmitter {
             Object.assign(info, { data: info.alt.data, sha1: info.alt.sha1, size: info.alt.data.length, converted: false });
           }
           const id = info.arcade ? `arcade-${info.arcade.set}` : info.sha1 || `${info.system}-${info.serial || ''}-${info.size}-${(info.internalName || path.basename(file)).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
-          // Cartridge never copies ROMs: it remembers where they are (inside a zip if need be),
+          // Fulton never copies ROMs: it remembers where they are (inside a zip if need be),
           // and only makes a converted copy later, for a game that needs one (see romPath)
           const where = {
             file: f.fromArchive ? f.archiveFile : file,
@@ -345,7 +389,7 @@ class Library extends EventEmitter {
           };
           const existing = this.state.roms.find((r) => r.id === id);
           if (existing) {
-            // an older Cartridge kept a copy of this ROM, or the file moved: point at the file found now
+            // an older Fulton kept a copy of this ROM, or the file moved: point at the file found now
             // (a copy is deleted; the player's own files never are)
             if ((this.isRomCopy(existing.file) || !fs.existsSync(existing.file)) && !this.isRomCopy(where.file) && path.resolve(existing.file) !== path.resolve(where.file)) {
               const old = existing.file;
@@ -387,7 +431,7 @@ class Library extends EventEmitter {
     }
   }
 
-  /** Free space where Cartridge writes (library, temporary files), for warnings and Check my setup. */
+  /** Free space where Fulton writes (library, temporary files), for warnings and Check my setup. */
   async diskStatus() {
     const places = [['library', this.dirs.root], ['temp', os.tmpdir()]];
     const out = [];
@@ -409,7 +453,7 @@ class Library extends EventEmitter {
   }
 
   /**
-   * Everything that can quietly go wrong, each with a plain explanation and (where Cartridge can) a one-click fix.
+   * Everything that can quietly go wrong, each with a plain explanation and (where Fulton can) a one-click fix.
    * Returns { ok: [...things that are fine], issues: [{ id, level: 'bad'|'warn', title, detail, fix?: { id, label } }] }
    */
   async checkSetup() {
@@ -423,7 +467,7 @@ class Library extends EventEmitter {
       else if (d.low) issues.push({ id: `space-${d.drive}`, level: 'warn', title: `Your ${d.drive} is getting full`, detail: `${fmt(d.free)} free. Big games and scans need a few GB.` });
       else ok.push(`${fmt(d.free)} free on your ${d.drive}`);
     }
-    // 2. leftovers Cartridge can clear: downloads, temporary files, unpacked ROMs for games, old copies
+    // 2. leftovers Fulton can clear: downloads, temporary files, unpacked ROMs for games, old copies
     const busy = this.jobs.size > 0;
     const dl = busy ? 0 : await this.folderBytes(this.dirs.downloads);
     if (dl > 50e6) issues.push({ id: 'downloads', level: 'warn', title: `${fmt(dl)} of leftover downloads`, detail: 'Downloads from installs that were cancelled or failed. They are safe to delete.', fix: { id: 'clear-downloads', label: 'Delete leftover downloads' } });
@@ -433,9 +477,9 @@ class Library extends EventEmitter {
         for (const d of await fsp.readdir(os.tmpdir())) if (/^cartridge-(rom|dmg)-/.test(d)) tmpBytes += await this.folderBytes(path.join(os.tmpdir(), d));
       } catch { /* no temp folder access */ }
     }
-    if (tmpBytes > 10e6) issues.push({ id: 'temp', level: 'warn', title: `${fmt(tmpBytes)} of temporary files`, detail: 'Left behind when Cartridge was closed in the middle of a ROM scan. Safe to delete.', fix: { id: 'clear-temp', label: 'Delete temporary files' } });
+    if (tmpBytes > 10e6) issues.push({ id: 'temp', level: 'warn', title: `${fmt(tmpBytes)} of temporary files`, detail: 'Left behind when Fulton was closed in the middle of a ROM scan. Safe to delete.', fix: { id: 'clear-temp', label: 'Delete temporary files' } });
     const copies = await this.romCopies();
-    if (copies.count) issues.push({ id: 'copies', level: copies.bytes > disk.GB ? 'warn' : 'warn', title: `${copies.count.toLocaleString()} old ROM copies${copies.bytes ? ` (${fmt(copies.bytes)})` : ''}`, detail: 'Older versions of Cartridge copied every ROM into its own folder. Cartridge now uses your files where they are. Rescan first so ROMs in your watched folders point at your originals; this removes the rest of the copies from the list and the disk.', fix: { id: 'remove-copies', label: 'Remove old copies' } });
+    if (copies.count) issues.push({ id: 'copies', level: copies.bytes > disk.GB ? 'warn' : 'warn', title: `${copies.count.toLocaleString()} old ROM copies${copies.bytes ? ` (${fmt(copies.bytes)})` : ''}`, detail: 'Older versions of Fulton copied every ROM into its own folder. Fulton now uses your files where they are. Rescan first so ROMs in your watched folders point at your originals; this removes the rest of the copies from the list and the disk.', fix: { id: 'remove-copies', label: 'Remove old copies' } });
     const conv = await this.folderBytes(path.join(this.dirs.roms, 'Converted'));
     if (conv > 2 * disk.GB) issues.push({ id: 'converted', level: 'warn', title: `${fmt(conv)} of converted ROMs`, detail: 'Copies made for games that need a different format (or a ROM out of a zip). They are made again the next time a game needs one.', fix: { id: 'clear-converted', label: 'Delete converted copies' } });
     // 3. ROM folders that can't be reached
@@ -446,7 +490,7 @@ class Library extends EventEmitter {
       if (!reachable[i]) issues.push({ id: `folder-${f}`, level: 'warn', title: `ROM folder not found: ${f}`, detail: "It's on a drive that isn't connected, or it was moved or renamed. Connect the drive, or stop watching it if it's gone for good.", fix: { id: `unwatch:${f}`, label: 'Stop watching it' } });
     });
     if (folders.length && reachable.every(Boolean)) ok.push(`All ${folders.length} ROM folder${folders.length > 1 ? 's' : ''} found`);
-    if (!folders.length) issues.push({ id: 'no-folders', level: 'warn', title: 'No ROM folder yet', detail: 'Add the folder where you keep your ROMs (ROM Folder at the top), and Cartridge finds new ones by itself every time it starts.' });
+    if (!folders.length) issues.push({ id: 'no-folders', level: 'warn', title: 'No ROM folder yet', detail: 'Add the folder where you keep your ROMs (ROM Folder at the top), and Fulton finds new ones by itself every time it starts.' });
     // 4. ROMs whose file is gone
     const missing = await this.markMissing();
     if (missing) issues.push({ id: 'missing', level: 'warn', title: `${missing.toLocaleString()} ROM${missing > 1 ? 's' : ''} with a missing file`, detail: "Moved, deleted, or on a drive that isn't connected. If you moved them, add the new folder and they're found again. Otherwise, take them off the list (no files are deleted).", fix: { id: 'forget-missing', label: 'Remove missing from the list' } });
@@ -466,7 +510,7 @@ class Library extends EventEmitter {
     return { ok, issues };
   }
 
-  /** Run one of Check my setup's fixes. Only ever deletes Cartridge's own leftovers. */
+  /** Run one of Check my setup's fixes. Only ever deletes Fulton's own leftovers. */
   async fixSetup(fixId) {
     const [what, arg] = [fixId.split(':')[0], fixId.slice(fixId.indexOf(':') + 1)];
     switch (what) {
@@ -510,7 +554,7 @@ class Library extends EventEmitter {
   }
 
   // ---------- ROM files: originals stay where they are ----------
-  /** Is this inside one of the folders you told Cartridge to watch? Those are your own files, always. */
+  /** Is this inside one of the folders you told Fulton to watch? Those are your own files, always. */
   inWatchedFolder(p) {
     const f = path.resolve(p).toLowerCase();
     return (this.state.settings.romFolders || []).some((d) => {
@@ -519,7 +563,7 @@ class Library extends EventEmitter {
     });
   }
 
-  /** Is this a copy Cartridge made in its own ROMs folder (older versions did, for every ROM)? */
+  /** Is this a copy Fulton made in its own ROMs folder (older versions did, for every ROM)? */
   isRomCopy(p) {
     if (!p) return false;
     const root = path.resolve(this.dirs.roms) + path.sep;
@@ -628,7 +672,7 @@ class Library extends EventEmitter {
     }
   }
 
-  /** Copies older versions of Cartridge made: how many and how big. */
+  /** Copies older versions of Fulton made: how many and how big. */
   async romCopies() {
     const list = this.state.roms.filter((r) => this.isRomCopy(r.file));
     let bytes = 0;
@@ -707,7 +751,7 @@ class Library extends EventEmitter {
     const r = this.state.roms.find((x) => x.id === id);
     if (!r) return;
     this.state.roms = this.state.roms.filter((x) => x.id !== id);
-    if (this.isRomCopy(r.file)) await this.deleteRomCopy(r.file); // a copy made by an older Cartridge
+    if (this.isRomCopy(r.file)) await this.deleteRomCopy(r.file); // a copy made by an older Fulton
     const conv = this.convertedPathOf(r);
     if (conv) await fsp.rm(conv, { force: true }).catch(() => {});
     for (const [g, rid] of Object.entries(this.state.romOverride)) if (rid === id) delete this.state.romOverride[g];
@@ -820,14 +864,14 @@ class Library extends EventEmitter {
   }
 
   /**
-   * A copy the player built or installed themselves (ports with no download, such as LAS Recomp): Cartridge just
+   * A copy the player built or installed themselves (ports with no download, such as LAS Recomp): Fulton just
    * starts it. `file` is the game's .exe, or a .bat/.cmd that starts it (for games that need a folder or options).
    */
   async linkInstall(gameId, file) {
     if (!this.game(gameId)) throw new Error('Unknown game.');
     if (!file || !fs.existsSync(file)) throw new Error("That file doesn't exist.");
     const prev = this.state.installed[gameId];
-    if (prev && !prev.manual) throw new Error('Uninstall the copy Cartridge installed first.');
+    if (prev && !prev.manual) throw new Error('Uninstall the copy Fulton installed first.');
     this.state.installed[gameId] = {
       tag: 'Your own copy', dir: path.dirname(file), exe: file, manual: true, installedAt: Date.now(),
       launchedOnce: prev ? prev.launchedOnce : false, playTime: prev ? prev.playTime || 0 : 0, lastPlayed: prev ? prev.lastPlayed : null,
@@ -970,7 +1014,7 @@ class Library extends EventEmitter {
       return this.markCommunity(items);
     } catch (e) {
       if (cached) return this.markCommunity(cached.items);
-      throw e;
+      return { ...this.markCommunity([]), offline: e.message }; // Fulton's own list still shows
     }
   }
 
@@ -1063,13 +1107,27 @@ class Library extends EventEmitter {
     // more than 40 "new" at once is a list change, not news (and fixes a count like "138 new" from before)
     const fresh = items.filter((c) => seen[c.key] > 0 && seen[c.key] > since);
     if (fresh.length > 40) { for (const c of fresh) seen[c.key] = 0; this.save().catch(() => {}); }
-    const repos = new Map(this.games.map((g) => [`${(g.repo || '').toLowerCase()}#${(g.assetMatch || '').replace(/\\/g, '').toLowerCase()}`, g.id]));
+    const key = (g) => `${(g.repo || '').toLowerCase()}#${(g.assetMatch || '').replace(/\\/g, '').toLowerCase()}`;
+    const repos = new Map(this.games.map((g) => [key(g), g.id]));
     const plainRepos = new Map(this.games.map((g) => [(g.repo || '').toLowerCase(), g.id]));
+    const matchId = (c) => repos.get(c.key) || (!c.assetFilter && plainRepos.get(c.repo.toLowerCase())) || null;
+    const out = items.map((c) => {
+      const id = matchId(c);
+      return { ...c, ...this.platformsFor(c), isNew: seen[c.key] > 0 && seen[c.key] > since, onShelf: id && this.onShelf(id) ? id : null, catalogId: id || null };
+    });
+    // Fulton's own list of ports: any that the community lists don't already cover show here too, so they can be added
+    const covered = new Set(out.map((c) => c.catalogId).filter(Boolean));
+    for (const g of [...this.baseGames, ...this.remoteGames]) {
+      if (covered.has(g.id) || !g.repo) continue;
+      const credit = (g.credits || [])[0] || {};
+      const c = { key: `builtin:${g.id}`, builtin: true, name: g.title, project: g.port || g.title, repo: g.repo, system: g.system, kind: g.kind || 'Native PC port', year: g.year || null, developer: g.developer || '', author: credit.name || g.repo.split('/')[0], desc: g.description || '', status: g.status, get: g.howToGet || 'download', needsFiles: g.needsFiles };
+      out.push({ ...c, ...this.platformsFor(c), isNew: false, onShelf: this.onShelf(g) ? g.id : null, catalogId: g.id });
+    }
     return {
       source: community.SOURCE_PAGE,
       recompendium: community.RECOMPENDIUM_PAGE,
       platformCheck: this.platformJob ? { running: true, done: this.platformJob.done, total: this.platformJob.total } : (this.platformSummary || null),
-      items: items.map((c) => ({ ...c, ...this.platformsFor(c), isNew: seen[c.key] > 0 && seen[c.key] > since, onShelf: repos.get(c.key) || (!c.assetFilter && plainRepos.get(c.repo.toLowerCase())) || null })),
+      items: out,
     };
   }
 
@@ -1078,6 +1136,7 @@ class Library extends EventEmitter {
     const c = items.find((x) => x.key === key);
     if (!c) throw new Error('That game is no longer in the community catalog.');
     if (c.onShelf) return this.game(c.onShelf);
+    if (c.catalogId) return this.addToShelf(c.catalogId); // one of Fulton's own entries: it knows more about the game
     const game = community.gameFromCandidate(c);
     this.state.userGames = this.state.userGames.filter((x) => x.id !== game.id).concat(game);
     (this.state.firstSeen || (this.state.firstSeen = {}))[game.id] = Date.now();
@@ -1268,7 +1327,7 @@ class Library extends EventEmitter {
 
   async downloadCover(url, key) {
     return this.limited(async () => {
-      const res = await (this.hooks.fetch || fetch)(url, { headers: { 'User-Agent': 'Cartridge-Launcher' } });
+      const res = await (this.hooks.fetch || fetch)(url, { headers: { 'User-Agent': 'Fulton-Launcher' } });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const buf = Buffer.from(await res.arrayBuffer());
       const type = covers.imageType(buf);
@@ -1348,8 +1407,8 @@ class Library extends EventEmitter {
     return cache[gameId].data || null;
   }
 
-  // ---------- Cartridge updates ----------
-  /** Is there a newer Cartridge on GitHub? Checked at most every 12 hours unless forced. */
+  // ---------- Fulton updates ----------
+  /** Is there a newer Fulton on GitHub? Checked at most every 12 hours unless forced. */
   async checkAppUpdate({ force = false } = {}) {
     if (!force && this.state.settings.checkUpdates === false) return null;
     const hit = this.state.appUpdate;

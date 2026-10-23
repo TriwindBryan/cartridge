@@ -289,8 +289,8 @@ test('ROM folder: deep scan, zips, remembered folder, quick rescan picks up new 
   assert.equal(lib.state.roms.length, 3);
 
   // The library's own ROM copies are never scanned back in, even if the library sits inside the folder
-  lib.state.settings.libraryDir = path.join(top, 'Cartridge');
-  await lib.addRoms([path.join(deep, 'mm.z64')]); // creates a copy under My ROMs/Cartridge/ROMs
+  lib.state.settings.libraryDir = path.join(top, 'Fulton');
+  await lib.addRoms([path.join(deep, 'mm.z64')]); // creates a copy under My ROMs/Fulton/ROMs
   const full = await lib.scanRomFolders({ full: true });
   assert.ok(full.every((r) => !r.file.includes('Legend of Zelda')), JSON.stringify(full));
   assert.ok(full.every((r) => r.status === 'duplicate'));
@@ -599,8 +599,8 @@ test('Steam: binary VDF round trip, shortcut add/update/remove, artwork', async 
   fs.mkdirSync(path.join(userDir, 'config'), { recursive: true });
   fs.writeFileSync(path.join(userDir, 'config', 'shortcuts.vdf'), existing);
 
-  const exe = 'C:\\Users\\b\\Cartridge\\Games\\soh\\soh.exe';
-  const appid = await steam.addShortcut(userDir, { name: 'Ship of Harkinian', exe, startDir: 'C:\\Users\\b\\Cartridge\\Games\\soh', icon: exe, tags: ['Cartridge'] });
+  const exe = 'C:\\Users\\b\\Fulton\\Games\\soh\\soh.exe';
+  const appid = await steam.addShortcut(userDir, { name: 'Ship of Harkinian', exe, startDir: 'C:\\Users\\b\\Fulton\\Games\\soh', icon: exe, tags: ['Fulton'] });
   let sc = await steam.readShortcuts(userDir);
   assert.equal(sc.list.value.length, 2);
   assert.deepEqual(sc.list.value.map((e) => e.key), ['0', '1']);
@@ -1021,7 +1021,7 @@ test('arcade: CPS1/2/3, Neo Geo and NAOMI sets are recognised by name, BIOS sets
   assert.equal(romdb.matchRomToGame(lib.state.roms.find((r) => r.id === 'arcade-mslug'), generic).level, 'ok');
 });
 
-test('Cartridge update check, credits and safe defaults', async () => {
+test('Fulton update check, credits and safe defaults', async () => {
   const update = require('../src/core/update');
   assert.ok(update.isNewer('1.20', '1.19'));
   assert.ok(update.isNewer('v2.0.0', '1.19'));
@@ -1031,7 +1031,7 @@ test('Cartridge update check, credits and safe defaults', async () => {
   assert.ok(update.repoReady('triwind/cartridge'));
 
   const release = { tag_name: 'v9.9.0', html_url: 'https://github.com/triwind/cartridge/releases/tag/v9.9.0', body: 'notes',
-    assets: [{ name: 'Cartridge-1.20.exe', browser_download_url: 'https://x/exe' }, { name: 'Cartridge-1.20-Setup.msi', browser_download_url: 'https://x/msi' }] };
+    assets: [{ name: 'Fulton-1.20.exe', browser_download_url: 'https://x/exe' }, { name: 'Fulton-1.20-Setup.msi', browser_download_url: 'https://x/msi' }] };
   const fake = (rel, status = 200) => async () => ({ ok: status === 200, status, json: async () => rel });
   const r = await update.checkForUpdate({ repo: 'triwind/cartridge', current: '1.20', fetchImpl: fake(release), platform: 'win32' });
   assert.equal(r.available, true);
@@ -1055,30 +1055,31 @@ test('Cartridge update check, credits and safe defaults', async () => {
   assert.ok(credits.length > 5);
   const hm = credits.find((c) => c.name === 'Harbour Masters');
   assert.ok(hm && hm.games.length >= 2 && /github\.com\/HarbourMasters/.test(hm.url));
-  assert.equal(lib.links.repo, 'TriwindBryan/cartridge');
+  assert.equal(lib.links.repo, 'TriwindBryan/fulton');
   // placeholder repo: no network call, no update
   lib.links.repo = 'YOUR-GITHUB-NAME/cartridge';
   assert.equal((await lib.checkAppUpdate({ force: true })).available, false);
-  lib.links.repo = 'TriwindBryan/cartridge';
+  lib.links.repo = 'TriwindBryan/fulton';
   assert.equal((await lib.checkAppUpdate({ force: true })).version, '9.9');
   assert.equal(lib.snapshot().appUpdate.version, '9.9');
 });
 
-test('MSI hook closes Cartridge and suppresses the restart prompt', () => {
+test('MSI hook closes Fulton and suppresses the restart prompt', () => {
   const { patch } = require('../build/msi-hook');
   const sample = `<?xml version="1.0"?><Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"><Product Id="*">
     <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage='A newer version is installed.'/>
     <Directory Id="TARGETDIR" Name="SourceDir"/></Product></Wix>`;
   const out = patch(sample);
   assert.match(out, /<Property Id="REBOOT" Value="ReallySuppress"\/>/);
-  assert.match(out, /taskkill\.exe" \/F \/IM "Cartridge\.exe"/);
-  assert.match(out, /<InstallExecuteSequence>\s*<Custom Action="CloseCartridge" Before="InstallValidate"\/>\s*<\/InstallExecuteSequence>/);
+  assert.match(out, /taskkill\.exe" \/F \/IM "Fulton\.exe"/);
+  assert.match(out, /taskkill\.exe" \/F \/IM "Cartridge\.exe"/, 'upgrading from the old name closes it too');
+  assert.match(out, /<InstallExecuteSequence>\s*<Custom Action="CloseFulton" Before="InstallValidate"\/>\s*<Custom Action="CloseCartridgeOld" Before="InstallValidate"\/>\s*<\/InstallExecuteSequence>/);
   assert.equal(patch(out), out, 'patching twice changes nothing');
   // an existing sequence gets the step added rather than a second sequence
   const withSeq = sample.replace('<Directory', '<InstallExecuteSequence><Custom Action="runAfterFinish" After="InstallFinalize">1</Custom></InstallExecuteSequence><Directory');
   const out2 = patch(withSeq);
   assert.equal((out2.match(/<InstallExecuteSequence>/g) || []).length, 1);
-  assert.match(out2, /CloseCartridge" Before="InstallValidate"\/>\s*<Custom Action="runAfterFinish"/);
+  assert.match(out2, /CloseCartridgeOld" Before="InstallValidate"\/>\s*<Custom Action="runAfterFinish"/);
 });
 
 test('ROMs are checked on a worker thread with the same results', async () => {
@@ -1215,9 +1216,9 @@ test('Mac: picks the right download, finds the .app, and offers the right update
   assert.equal(await inst.findExecutable(dir, 'soh\\.exe$', 'darwin'), path.join(dir, 'Ship', 'soh.app'));
   assert.equal(inst.macHint('zelda3\\.exe$'), 'zelda3');
 
-  // Cartridge's own update: a Mac gets the .dmg for its chip
+  // Fulton's own update: a Mac gets the .dmg for its chip
   const update = require('../src/core/update');
-  const release = { tag_name: 'v9.9.0', html_url: 'https://x', assets: assets(['Cartridge-9.9.0-Setup.msi', 'Cartridge-9.9.0-arm64.dmg', 'Cartridge-9.9.0-x64.dmg']) };
+  const release = { tag_name: 'v9.9.0', html_url: 'https://x', assets: assets(['Fulton-9.9.0-Setup.msi', 'Fulton-9.9.0-arm64.dmg', 'Fulton-9.9.0-x64.dmg']) };
   const fake = async () => ({ ok: true, status: 200, json: async () => release });
   assert.match((await update.checkForUpdate({ repo: 'a/b', current: '1.0', fetchImpl: fake, platform: 'darwin', arch: 'arm64' })).download, /arm64\.dmg$/);
   assert.match((await update.checkForUpdate({ repo: 'a/b', current: '1.0', fetchImpl: fake, platform: 'darwin', arch: 'x64' })).download, /x64\.dmg$/);
@@ -1260,10 +1261,10 @@ test('ROMs are never copied, and copies from older versions are cleaned up', asy
   fs.writeFileSync(path.join(mine, 'game.z64'), z64);
   const lib = new Library({ dataDir: path.join(work, 'data'), catalogFile: path.join(__dirname, '..', 'catalog', 'games.json'), platform: 'linux' });
   await lib.load();
-  lib.state.settings.libraryDir = path.join(work, 'Cartridge');
+  lib.state.settings.libraryDir = path.join(work, 'Fulton');
   lib.state.settings.romFolders = [mine];
 
-  // an older Cartridge's copy of the same ROM, still in the library
+  // an older Fulton's copy of the same ROM, still in the library
   fs.mkdirSync(lib.dirs.roms, { recursive: true });
   const copy = path.join(lib.dirs.roms, 'game.z64');
   fs.writeFileSync(copy, z64);
@@ -1280,7 +1281,7 @@ test('ROMs are never copied, and copies from older versions are cleaned up', asy
   assert.equal(await lib.romPath(lib.state.roms[0]), path.join(mine, 'game.z64'), 'a plain .z64 is used as it is');
   assert.equal(await lib.migrateRomCopies(), null, 'runs once');
 
-  // adding more ROMs never writes anything into Cartridge's folders
+  // adding more ROMs never writes anything into Fulton's folders
   fs.writeFileSync(path.join(mine, 'other.z64'), Buffer.concat([z64.subarray(0, 0x40), Buffer.alloc(z64.length - 0x40, 1)]));
   await lib.addRoms([mine]);
   assert.ok(!fs.readdirSync(lib.dirs.roms).length, 'ROMs folder stays empty');
@@ -1304,7 +1305,7 @@ test('safety: zips unpack one at a time, only real copies are deleted, missing R
   }
   const lib = new Library({ dataDir: path.join(work, 'data'), catalogFile: path.join(__dirname, '..', 'catalog', 'games.json'), platform: 'linux' });
   await lib.load();
-  lib.state.settings.libraryDir = path.join(work, 'Cartridge');
+  lib.state.settings.libraryDir = path.join(work, 'Fulton');
   lib.state.settings.romFolders = [mine];
   // count temporary folders that exist at once while the scan runs
   let most = 0;
@@ -1337,7 +1338,7 @@ test('safety: zips unpack one at a time, only real copies are deleted, missing R
   assert.equal(lib.isRomCopy(neighbour), false, 'a watched folder holds your own files');
   assert.equal(await lib.deleteRomCopy(neighbour), 0);
   assert.ok(fs.existsSync(neighbour));
-  assert.equal(await lib.deleteRomCopy(path.join(mine, `ZIPA.${ext}`)), 0, 'never outside Cartridge\'s ROMs folder');
+  assert.equal(await lib.deleteRomCopy(path.join(mine, `ZIPA.${ext}`)), 0, 'never outside Fulton\'s ROMs folder');
   assert.ok(fs.existsSync(path.join(mine, `ZIPA.${ext}`)));
   lib.state.settings.romFolders = [mine];
 
@@ -1361,11 +1362,16 @@ test('safety: zips unpack one at a time, only real copies are deleted, missing R
   assert.ok(!lib.state.roms.some((r) => r.id === 'usb'));
 });
 
-test('Check my setup finds problems and fixes only Cartridge\'s own leftovers', async () => {
+test('Check my setup finds problems and fixes only Fulton\'s own leftovers', async (t) => {
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'cart-setup-'));
+  // the check looks in the computer's temp folder: point it at an empty one, so leftovers from real use can't change the result
+  const fakeTmp = path.join(work, 'tmp'); fs.mkdirSync(fakeTmp);
+  const saved = { TEMP: process.env.TEMP, TMP: process.env.TMP, TMPDIR: process.env.TMPDIR };
+  Object.assign(process.env, { TEMP: fakeTmp, TMP: fakeTmp, TMPDIR: fakeTmp });
+  t.after(() => { for (const [k, v] of Object.entries(saved)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; } });
   const lib = new Library({ dataDir: path.join(work, 'data'), catalogFile: path.join(__dirname, '..', 'catalog', 'games.json'), platform: 'linux' });
   await lib.load();
-  lib.state.settings.libraryDir = path.join(work, 'Cartridge');
+  lib.state.settings.libraryDir = path.join(work, 'Fulton');
   const mine = path.join(work, 'roms');
   fs.mkdirSync(mine);
   lib.state.settings.romFolders = [mine, path.join(work, 'unplugged')];
@@ -1436,11 +1442,17 @@ test('favorites, new ports since your last visit, and color themes', async () =>
   require('../renderer/themes.js');
   const { THEMES, THEME_KEYS, themeColors } = global.window;
   for (const t of THEMES) for (const [k] of THEME_KEYS) assert.match(t.colors[k], /^#[0-9a-f]{6}$/i, `${t.id}.${k}`);
-  assert.equal(themeColors(undefined).magenta, '#1f7fb0', 'Cartridge Frost by default');
-  assert.equal(THEMES[0].name, 'Cartridge Frost');
-  const c = themeColors({ preset: 'custom', base: 'midnight', custom: { magenta: '#123456' } });
-  assert.equal(c.magenta, '#123456');
-  assert.equal(c.gold, THEMES.find((t) => t.id === 'midnight').colors.gold);
+  assert.equal(themeColors(undefined).accent, '#0a84ff', 'Fulton Blue by default');
+  assert.equal(THEMES[0].name, 'Fulton Blue');
+  const c = themeColors({ preset: 'custom', base: 'midnight', custom: { accent: '#123456' } });
+  assert.equal(c.accent, '#123456');
+  assert.equal(c.wall1, THEMES.find((t) => t.id === 'midnight').colors.wall1, 'the rest comes from the preset they started from');
+  // custom colors saved by earlier versions (hot was the accent) still apply
+  assert.equal(themeColors({ preset: 'custom', base: 'arctic', custom: { hot: '#abcdef' } }).accent, '#abcdef');
+  assert.equal(themeColors({ preset: 'arctic' }).accent, THEMES.find((t) => t.id === 'arctic').colors.accent, 'saved presets keep working');
+  // pale accents get dark text, deep ones white
+  assert.equal(global.window.inkFor('#64d2ff'), '#10131a');
+  assert.equal(global.window.inkFor('#0a84ff'), '#ffffff');
   delete global.window;
   const css = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'styles.css'), 'utf8');
   assert.ok(!/rgba\(\s*226,\s*52,\s*43/.test(css.slice(css.indexOf('* { box-sizing'))), 'the reds follow the theme');
@@ -1505,7 +1517,7 @@ test('Find more: which ports have Windows and Mac downloads', async () => {
   assert.deepEqual(marked['self/build'], [false, false]);
   // cached: nothing to check the second time; a busy GitHub stops the check (the rest wait for next time)
   assert.deepEqual(await lib.checkPlatforms(items, { fetchImpl: fakeFetch }), { checked: 0, failed: 0 }, 'cached: nothing to check again');
-  // GitHub says "slow down": Cartridge pauses and carries on; what still fails is counted, not silently dropped
+  // GitHub says "slow down": Fulton pauses and carries on; what still fails is counted, not silently dropped
   let busyLeft = 2;
   releases['busy/repo'] = ['Game-Mac.zip'];
   const flaky = async (url) => (/busy\/repo\/releases\/latest$/.test(url) && busyLeft-- > 0 ? { status: 429, ok: false, url } : fakeFetch(url));
@@ -1520,8 +1532,10 @@ test('Find more: which ports have Windows and Mac downloads', async () => {
   assert.deepEqual(lib.markCommunity([item('new/one')]).platformCheck, { total: 1, failed: 1 }, 'the page can say what is still unknown');
 });
 
-test('Xbox 360: full disc dumps, trimmed isos and Games on Demand are recognised', async () => {
+// Windows doesn't make sparse files by default, so the 18 GB of fake discs would really be written: skipped there
+test('Xbox 360: full disc dumps, trimmed isos and Games on Demand are recognised', { skip: process.platform === 'win32' && 'needs sparse files' }, async (t) => {
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'cart-xdisc-'));
+  t.after(() => fs.rmSync(work, { recursive: true, force: true }));
   // write an XDVDFS volume (magic + root folder holding the game file) at a partition offset, as a sparse file
   const xdvdfs = (file, part, gameFile, total) => {
     const fd = fs.openSync(file, 'w');
@@ -1560,7 +1574,7 @@ test('Xbox 360: full disc dumps, trimmed isos and Games on Demand are recognised
 
   const lib = new Library({ dataDir: path.join(work, 'data'), catalogFile: path.join(__dirname, '..', 'catalog', 'games.json'), platform: 'linux' });
   await lib.load();
-  lib.state.settings.libraryDir = path.join(work, 'Cartridge');
+  lib.state.settings.libraryDir = path.join(work, 'Fulton');
   const report = await lib.addRoms([work]);
   const added = report.filter((r) => r.status === 'added');
   assert.equal(report.filter((r) => r.status === 'error').length, 0, JSON.stringify(report.filter((r) => r.status === 'error')));
@@ -1590,7 +1604,7 @@ test('3DS: compressed formats, big archives listed without unpacking, clean name
 
   const lib = new Library({ dataDir: path.join(work, 'data'), catalogFile: path.join(__dirname, '..', 'catalog', 'games.json'), platform: 'linux' });
   await lib.load();
-  lib.state.settings.libraryDir = path.join(work, 'Cartridge');
+  lib.state.settings.libraryDir = path.join(work, 'Fulton');
   lib.bigArchiveBytes = 1; // treat every zip as "big", so it's only listed
   const report = await lib.addRoms([games]);
   assert.equal(report.filter((r) => r.status === 'error').length, 0, JSON.stringify(report));
@@ -1657,7 +1671,7 @@ test('Modern consoles and Dreamcast CHDs are recognised', async () => {
 
   const lib = new Library({ dataDir: path.join(work, 'data'), catalogFile: path.join(__dirname, '..', 'catalog', 'games.json'), platform: 'linux' });
   await lib.load();
-  lib.state.settings.libraryDir = path.join(work, 'Cartridge');
+  lib.state.settings.libraryDir = path.join(work, 'Fulton');
   const report = await lib.addRoms([work]);
   assert.equal(report.filter((r) => r.status === 'error').length, 0, JSON.stringify(report.filter((r) => r.status === 'error')));
   const sys = (name) => (lib.state.roms.find((r) => r.internalName === name) || {}).system;
@@ -1677,4 +1691,32 @@ test('Modern consoles and Dreamcast CHDs are recognised', async () => {
   assert.equal(sys('Shenmue'), 'dreamcast');
   assert.equal(sys('God of War II'), 'ps2');
   for (const id of ['ps4', 'ps5', 'xone', 'xsx', 'switch2']) assert.ok(lib.systems[id], `${id} is in the catalog`);
+});
+
+test('a new install starts with an empty shelf; Find more adds built-in ports; removing needs an uninstall first', async () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'cart-shelf-'));
+  const mk = () => new Library({ dataDir: path.join(work, 'data'), catalogFile: path.join(__dirname, '..', 'catalog', 'games.json'), platform: 'linux', startEmpty: true });
+  const lib = await mk().load();
+  assert.equal(lib.snapshot().games.length, 0, 'nothing packed in');
+  const list = lib.markCommunity([]);
+  assert.equal(list.items.filter((c) => c.builtin).length, catalog.games.filter((g) => g.repo).length, 'built-in ports are listed for adding');
+  const id = catalog.games.find((g) => g.repo).id;
+  const item = list.items.find((c) => c.catalogId === id);
+  assert.equal(item.onShelf, null);
+  await lib.addCommunityGame(item.key).catch(() => {}); // (the community list needs the network; adding by id is the real path)
+  await lib.addToShelf(id);
+  assert.deepEqual(lib.snapshot().games.map((g) => g.id), [id]);
+  assert.equal(lib.markCommunity([]).items.find((c) => c.catalogId === id).onShelf, id);
+  // installed games can't be removed from the shelf
+  lib.state.installed[id] = { tag: 'v1', dir: path.join(work, 'x'), exe: 'x' };
+  await assert.rejects(() => lib.removeFromShelf(id), /Uninstall/);
+  delete lib.state.installed[id];
+  await lib.removeFromShelf(id);
+  assert.equal(lib.snapshot().games.length, 0);
+  // someone who already had Fulton keeps the whole shelf
+  const old = fs.mkdtempSync(path.join(os.tmpdir(), 'cart-shelf-old-'));
+  fs.mkdirSync(path.join(old, 'data'));
+  fs.writeFileSync(path.join(old, 'data', 'state.json'), JSON.stringify({ installed: {}, roms: [] }));
+  const upgraded = await new Library({ dataDir: path.join(old, 'data'), catalogFile: path.join(__dirname, '..', 'catalog', 'games.json'), platform: 'linux', startEmpty: true }).load();
+  assert.equal(upgraded.snapshot().games.length, catalog.games.length);
 });

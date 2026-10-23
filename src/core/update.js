@@ -1,7 +1,7 @@
-// Checks GitHub for a newer Cartridge release. Pure Node (fetch is passed in), so it can be unit tested.
+// Checks GitHub for a newer Fulton release. Pure Node (fetch is passed in), so it can be unit tested.
 'use strict';
 
-/** "v1.20" / "1.20.0" / "Cartridge 1.20" -> [1, 20, 0]; null if there's no version in it. */
+/** "v1.20" / "1.20.0" / "Fulton 1.20" -> [1, 20, 0]; null if there's no version in it. */
 function parseVersion(v) {
   const m = String(v || '').match(/(\d+)\.(\d+)(?:\.(\d+))?/);
   return m ? [Number(m[1]), Number(m[2]), Number(m[3] || 0)] : null;
@@ -20,12 +20,12 @@ function isNewer(a, b) {
 const repoReady = (repo) => /^[\w.-]+\/[\w.-]+$/.test(String(repo || '')) && !/^YOUR[-_]/i.test(repo);
 
 /**
- * The newest release of the Cartridge repo, compared with the running version.
+ * The newest release of the Fulton repo, compared with the running version.
  * Returns { available, version, url, notes, publishedAt } or { available: false } when there's nothing newer.
  */
 async function checkForUpdate({ repo, current, fetchImpl, token, platform = process.platform, arch = process.arch }) {
   if (!repoReady(repo)) return { available: false, skipped: 'no-repo' };
-  const headers = { Accept: 'application/vnd.github+json', 'User-Agent': 'Cartridge-Launcher', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+  const headers = { Accept: 'application/vnd.github+json', 'User-Agent': 'Fulton-Launcher', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
   const res = await fetchImpl(`https://api.github.com/repos/${repo}/releases/latest`, { headers });
   if (res.status === 404) return { available: false, skipped: 'no-releases' };
   if (!res.ok) throw new Error(`GitHub ${res.status}`);

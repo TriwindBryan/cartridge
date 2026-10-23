@@ -5,20 +5,20 @@ const fs = require('fs');
 const { Library } = require('./src/core/library');
 const { Inspector } = require('./src/core/inspector');
 
-// ---------- log file (%APPDATA%\Cartridge\cartridge.log): what started, how long it took, and anything that froze the window
+// ---------- log file (%APPDATA%\Fulton\fulton.log): what started, how long it took, and anything that froze the window
 let logFile = null;
 function log(msg) {
   const line = `${new Date().toISOString()}  ${msg}\n`;
   try { if (logFile) fs.appendFileSync(logFile, line); } catch { /* never let logging break anything */ }
 }
 function startLog() {
-  logFile = path.join(app.getPath('userData'), 'cartridge.log');
+  logFile = path.join(app.getPath('userData'), 'fulton.log');
   try {
     fs.mkdirSync(path.dirname(logFile), { recursive: true });
     // keep it small: start over once it passes 512 KB
     if (fs.existsSync(logFile) && fs.statSync(logFile).size > 512 * 1024) fs.writeFileSync(logFile, '');
   } catch { /* ignore */ }
-  log(`---- Cartridge ${app.getVersion()} starting (${process.platform} ${require('os').release()} ${process.arch}, Electron ${process.versions.electron})`);
+  log(`---- Fulton ${app.getVersion()} starting (${process.platform} ${require('os').release()} ${process.arch}, Electron ${process.versions.electron})`);
   // if the main process is ever stuck for more than 2 seconds, write down for how long
   let last = Date.now();
   const tick = setInterval(() => {
@@ -32,13 +32,38 @@ function startLog() {
 let win;
 let lib;
 
+// ---------- the app used to be called Cartridge: carry its saved data over to the new folder on first start ----------
+// Copies (never moves), so the old folder stays as a backup and an older version still works. Runs before anything reads the data.
+const OLD_DATA_FOLDERS = ['Cartridge'];
+const SKIP_CHROMIUM = new Set(['Cache', 'Code Cache', 'GPUCache', 'DawnCache', 'DawnGraphiteCache', 'DawnWebGPUCache', 'Session Storage', 'Network', 'blob_storage',
+  'Shared Dictionary', 'SharedStorage', 'Local Storage', 'IndexedDB', 'Partitions', 'Crashpad', 'component_crx_cache', 'Dictionaries', 'Singleton', 'SingletonLock', 'SingletonCookie', 'SingletonSocket', 'lockfile']);
+function migrateOldData() {
+  try {
+    const next = app.getPath('userData');
+    if (fs.existsSync(path.join(next, 'state.json'))) return null; // already in use
+    for (const name of OLD_DATA_FOLDERS) {
+      const prev = path.join(app.getPath('appData'), name);
+      if (!fs.existsSync(path.join(prev, 'state.json'))) continue;
+      fs.mkdirSync(next, { recursive: true });
+      fs.cpSync(prev, next, { recursive: true, force: false, errorOnExist: false, filter: (src) => !SKIP_CHROMIUM.has(path.basename(src)) || path.dirname(src) !== prev });
+      // pictures and other files saved inside the old folder are now in the new one: point the settings at them
+      const file = path.join(next, 'state.json');
+      const swap = (t) => JSON.stringify(t).slice(1, -1);
+      fs.writeFileSync(file, fs.readFileSync(file, 'utf8').split(swap(prev)).join(swap(next)));
+      return prev;
+    }
+  } catch (e) { return { error: String(e && e.message || e) }; }
+  return null;
+}
+let migratedFrom = null;
+
 function createWindow() {
   nativeTheme.themeSource = 'dark';
   win = new BrowserWindow({
     width: 1440, height: 900, minWidth: 1000, minHeight: 640,
     backgroundColor: '#14161b',
     // the name people see ("Beta 0.0001"); the version number behind it keeps counting so installs and updates work
-    title: `Cartridge ${(require('./package.json').cartridge || {}).label || app.getVersion().replace(/\.0$/, '')}`,
+    title: `Fulton ${(require('./package.json').cartridge || {}).label || app.getVersion().replace(/\.0$/, '')}`,
     icon: path.join(__dirname, 'build', 'icon.png'),
     autoHideMenuBar: true,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true },
@@ -67,11 +92,15 @@ const push = () => {
 };
 
 app.whenReady().then(async () => {
+  migratedFrom = migrateOldData();
   startLog();
+  if (migratedFrom && migratedFrom.error) log(`Could not copy the old Cartridge data: ${migratedFrom.error}`);
+  else if (migratedFrom) log(`Copied your saved data from ${migratedFrom}`);
   const t0 = Date.now();
   // the ROM checker runs on its own thread; in the installed app it lives outside app.asar (see asarUnpack)
   const inspector = new Inspector(path.join(__dirname, 'src', 'core', 'inspect-worker.js').replace(/app\.asar([\\/])/, 'app.asar.unpacked$1'), log);
   lib = new Library({
+    startEmpty: true, // a new install starts with an empty shelf; Find more adds games
     dataDir: app.getPath('userData'),
     catalogFile: path.join(__dirname, 'catalog', 'games.json'),
     hooks: {
@@ -111,11 +140,11 @@ app.whenReady().then(async () => {
     if (r.canceled || !r.filePaths[0]) return null;
     const cur = lib.state.installed[id];
     if (cur && !cur.manual) {
-      // Cartridge installed its own download earlier: swap it for the player's copy in one go
+      // Fulton installed its own download earlier: swap it for the player's copy in one go
       const { response } = await dialog.showMessageBox(win, {
         type: 'question', buttons: ['Use my copy', 'Cancel'], defaultId: 0, cancelId: 1,
         message: `Use your own copy of ${g.port}?`,
-        detail: `Cartridge will back up the saves in its downloaded copy (${cur.tag}), remove that download, and start your copy from now on. Nothing in your own folder is changed.`,
+        detail: `Fulton will back up the saves in its downloaded copy (${cur.tag}), remove that download, and start your copy from now on. Nothing in your own folder is changed.`,
       });
       if (response !== 0) return null;
       await lib.uninstall(id);
@@ -166,7 +195,7 @@ app.whenReady().then(async () => {
     const { response } = await dialog.showMessageBox(win, {
       type: 'question', buttons: ['Remove from list', 'Cancel'], defaultId: 0, cancelId: 1,
       message: `Remove ${n.toLocaleString()} missing ROM${n > 1 ? 's' : ''} from the list?`,
-      detail: "Their files are already gone (or on a drive that isn't connected). This only tidies Cartridge's list; no files are deleted. If they come back, a rescan finds them again.",
+      detail: "Their files are already gone (or on a drive that isn't connected). This only tidies Fulton's list; no files are deleted. If they come back, a rescan finds them again.",
     });
     return response === 0 ? lib.forgetMissing() : null;
   });
@@ -176,7 +205,7 @@ app.whenReady().then(async () => {
     const { response } = await dialog.showMessageBox(win, {
       type: 'warning', buttons: ['Remove copies', 'Cancel'], defaultId: 1, cancelId: 1,
       message: `Remove ${info.count.toLocaleString()} ROM copies?`,
-      detail: "These copies were made by older versions of Cartridge, from ROMs that aren't in a watched ROM folder. Your own ROM files aren't touched. The ROMs disappear from My ROMs; add their folder again to bring them back.",
+      detail: "These copies were made by older versions of Fulton, from ROMs that aren't in a watched ROM folder. Your own ROM files aren't touched. The ROMs disappear from My ROMs; add their folder again to bring them back.",
     });
     return response === 0 ? lib.removeRomCopies() : null;
   });
@@ -286,7 +315,7 @@ app.whenReady().then(async () => {
       const { response } = await dialog.showMessageBox(win, {
         type: 'question', buttons: ['Close Steam and add', 'Cancel'], defaultId: 0, cancelId: 1,
         message: 'Steam needs to close for a moment',
-        detail: 'Steam rewrites its shortcut list when it exits, so it has to be closed while Cartridge adds games. It reopens straight after.',
+        detail: 'Steam rewrites its shortcut list when it exits, so it has to be closed while Fulton adds games. It reopens straight after.',
       });
       if (response !== 0) return { cancelled: true };
       if (!(await closeSteam(info.root))) throw new Error("Steam didn't close. Close it from the system tray and try again.");
@@ -300,7 +329,7 @@ app.whenReady().then(async () => {
       const appid = await steam.addShortcut(info.userDir, {
         name: g.port === g.title ? g.title : `${g.title} (${g.port})`,
         exe: inst.exe, startDir: path.dirname(inst.exe), icon: inst.exe,
-        tags: ['Cartridge', (lib.systems[g.system] || {}).name || g.system],
+        tags: ['Fulton', (lib.systems[g.system] || {}).name || g.system],
       });
       await steam.writeArtwork(info.userDir, appid, art ? {
         portrait: fromDataUrl(art.portrait), wide: fromDataUrl(art.wide), hero: fromDataUrl(art.hero), logo: fromDataUrl(art.logo),
@@ -350,6 +379,7 @@ app.whenReady().then(async () => {
   });
   handle('setFavorite', (id, on) => lib.setFavorite(id, !!on));
   handle('addCommunityGame', (key) => lib.addCommunityGame(key));
+  handle('removeFromShelf', (id) => lib.removeFromShelf(id));
   handle('metascore', (id, force) => lib.metascore(id, { force }));
   // cover art
   const coverKinds = new Set(['game', 'rom', 'title']);
@@ -364,7 +394,7 @@ app.whenReady().then(async () => {
   handle('resetCover', (kind, id) => lib.resetCover(kind, id));
   handle('findAllCovers', () => lib.findAllCovers({ onProgress: (done, total) => win && win.webContents.send('coverProgress', { done, total }) }));
   handle('imageData', async (file) => {
-    // only images Cartridge saved itself (covers), handed to the canvas that draws Steam artwork
+    // only images Fulton saved itself (covers), handed to the canvas that draws Steam artwork
     const full = path.resolve(file);
     if (!full.startsWith(path.resolve(lib.coverDir) + path.sep)) throw new Error('Not a cover image');
     const buf = await require('fs').promises.readFile(full);
@@ -396,7 +426,7 @@ app.whenReady().then(async () => {
     if (!lib.state.romCopiesMigrated) {
       const before = await lib.romCopies().catch(() => ({ count: 0 }));
       if (before.count) notice(before.bytes ? 'Freeing up space' : 'Updating your ROM list', before.bytes
-        ? `Older versions of Cartridge kept a copy of ${before.count.toLocaleString()} ROMs (${gb(before.bytes)}). Cartridge now uses your ROMs where they are, and is removing the copies…`
+        ? `Older versions of Fulton kept a copy of ${before.count.toLocaleString()} ROMs (${gb(before.bytes)}). Fulton now uses your ROMs where they are, and is removing the copies…`
         : `Pointing ${before.count.toLocaleString()} ROMs at your own files instead of old copies. This takes a few minutes with a big collection…`, '');
       const res = await lib.migrateRomCopies().catch((e) => {
         log(`ROM copy clean-up failed: ${e.message}`);
@@ -416,12 +446,12 @@ app.whenReady().then(async () => {
     });
     // a nearly full drive breaks installs, saves and Windows itself: say so plainly
     for (const d of await lib.diskStatus().catch(() => [])) {
-      if (d.low) notice(`Your ${d.drive} is almost full`, `Only ${require('./src/core/disk').fmt(d.free)} is free. Installs and save backups may fail. Free up some space; Help → Check my setup shows what's using Cartridge's space.`, 'warn');
+      if (d.low) notice(`Your ${d.drive} is almost full`, `Only ${require('./src/core/disk').fmt(d.free)} is free. Installs and save backups may fail. Free up some space; Help → Check my setup shows what's using Fulton's space.`, 'warn');
     }
     const added = report.filter((r) => r.status === 'added');
     if (added.length && win && !win.isDestroyed()) win.webContents.send('scanReport', report);
   }, 1500);
-  // Is there a newer Cartridge? (quietly skipped when offline or before the first release exists)
+  // Is there a newer Fulton? (quietly skipped when offline or before the first release exists)
   setTimeout(() => lib.checkAppUpdate().catch(() => null), 8000);
 });
 

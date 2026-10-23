@@ -1,14 +1,14 @@
 {
   "name": "cartridge-launcher",
-  "productName": "Cartridge",
-  "version": "1.51.0",
-  "description": "A launcher for decompiled and recompiled retro game ports. Bring your ROMs, it does the rest.",
+  "productName": "Fulton",
+  "version": "1.53.0",
+  "description": "Fulton: Your home base for recomps, decomps and remakes. A launcher for decompiled and recompiled retro game ports. Bring your ROMs, it does the rest.",
   "main": "main.js",
   "cartridge": {
     "kofi": "https://ko-fi.com/triwind",
-    "repo": "TriwindBryan/cartridge",
+    "repo": "TriwindBryan/fulton",
     "itch": "",
-    "label": "Beta 0.0018"
+    "label": "Beta 0.0020"
   },
   "license": "MIT",
   "scripts": {
@@ -25,7 +25,7 @@
   },
   "build": {
     "appId": "com.cartridge.launcher",
-    "productName": "Cartridge",
+    "productName": "Fulton",
     "directories": {
       "output": "dist"
     },
@@ -53,16 +53,16 @@
       ]
     },
     "portable": {
-      "artifactName": "Cartridge-${version}-Portable.exe"
+      "artifactName": "Fulton-${version}-Portable.exe"
     },
     "msi": {
-      "artifactName": "Cartridge-${version}-Setup.msi",
+      "artifactName": "Fulton-${version}-Setup.msi",
       "oneClick": false,
       "perMachine": false,
       "runAfterFinish": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Cartridge",
+      "shortcutName": "Fulton",
       "upgradeCode": "6f3c2b1e-7a4d-4c8e-9b21-c4a7d2e5f091",
       "warningsAsErrors": false
     },
@@ -84,15 +84,15 @@
       "gatekeeperAssess": false
     },
     "dmg": {
-      "artifactName": "Cartridge-${version}-${arch}.dmg",
-      "title": "Cartridge ${version}",
+      "artifactName": "Fulton-${version}-${arch}.dmg",
+      "title": "Fulton ${version}",
       "icon": "build/icon.icns"
     }
   },
   "author": "TriwindBryan",
-  "homepage": "https://github.com/TriwindBryan/cartridge",
+  "homepage": "https://github.com/TriwindBryan/fulton",
   "repository": {
     "type": "git",
-    "url": "https://github.com/TriwindBryan/cartridge.git"
+    "url": "https://github.com/TriwindBryan/fulton.git"
   }
 }

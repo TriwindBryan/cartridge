@@ -1,4 +1,4 @@
-// Builds catalog/arcade.json: every arcade set Cartridge can recognise, with its name, year, maker, board and parent.
+// Builds catalog/arcade.json: every arcade set Fulton can recognise, with its name, year, maker, board and parent.
 // Sources (from github.com/libretro/libretro-database, metadat/):
 //   fbneo-split/FinalBurn Neo (ClrMame Pro XML, Arcade only).dat   names as used by FBNeo and its box art
 //   mame/MAME 2016 XML (Arcade Only).xml                           the board each set runs on (sourcefile)
@@ -6,7 +6,7 @@
 'use strict';
 const fs = require('fs');
 
-// MAME driver file -> Cartridge board id
+// MAME driver file -> Fulton board id
 const BOARDS = {
   'cps1.cpp': 'cps1', 'kenseim.cpp': 'cps1', 'cps2.cpp': 'cps2', 'cps3.cpp': 'cps3', 'zn.cpp': 'zn',
   'neogeo.cpp': 'neogeo', 'neodriv.hxx': 'neogeo', 'neoprint.cpp': null,
@@ -55,7 +55,7 @@ for (const [name, x] of Object.entries(mame)) {
 }
 const bios = ['neogeo', 'pgm', 'naomi', 'naomi2', 'awbios', 'cps3', 'stvbios', 'coh1000c', 'coh1000w', 'coh1002e', 'coh3002c', 'sys573', 'decocass', 'skns', 'konamigx', 'isgsm', 'hod2bios'];
 process.stdout.write(JSON.stringify({
-  about: 'Arcade sets Cartridge recognises: name -> [description, year, manufacturer, board, parent, source (f = FinalBurn Neo, m = MAME)]. Built by tools/build-arcade.js from libretro-database.',
+  about: 'Arcade sets Fulton recognises: name -> [description, year, manufacturer, board, parent, source (f = FinalBurn Neo, m = MAME)]. Built by tools/build-arcade.js from libretro-database.',
   bios,
   sets,
 }));

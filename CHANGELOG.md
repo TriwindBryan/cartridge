@@ -2,6 +2,23 @@
 
 From 1.34 Cartridge is shown as **Beta 0.0001** (next to the logo, in the window title, on About and in Settings). Behind that name the build number keeps counting (1.34, 1.35…), because installers and the update check need a number that always goes up. Release tags on GitHub use the build number (v1.34); release titles use the beta name.
 
+## Beta 0.0020 (build 1.53) — October 23, 2026
+
+**Cartridge is now Fulton, with a new look**
+- **New name: Fulton.** New balloon-and-cartridge logo, and the window, installer, menus, Help and docs all say Fulton. Updates from Cartridge install over the old app.
+- **Your data carries over.** On first start Fulton copies your saved settings, favorites and play times from Cartridge (the old folder stays as a backup) and keeps using your existing ~/Cartridge library folder.
+- **Tagline:** Your home base for recomps, decomps and remakes (welcome screen, About, README).
+- **New look.** A dark Mac-style layout: sidebar on the left (Library, Discover, App), square covers, pill buttons and a blue accent.
+- **Background picture** now shows through: a new **See-through** slider (Settings → Background) lets you decide how solid the sidebar and panels are.
+- **No games packed in.** A new install starts with an empty shelf. Fulton's own list of ports now lives in **Find more**, where **+ Add** puts one on your shelf. Any game can be taken off with **Remove from shelf** (an installed one is uninstalled first, after asking). If you already use Cartridge, your shelf stays exactly as it was. **Uninstall** and **Remove from shelf** also sit at the bottom of the side panel, always in reach.
+- **Custom colors have a real color picker again**: click a swatch for a color square and hue strip (drawn by Fulton, so the numbers show correctly on the Mac), or type a color code or R / G / B numbers. **Your custom colors are remembered** when you try other themes; click Custom to get them back.
+- **Tagline: "Your home base for recomps, decomps and remakes"** on the welcome screen, About, the empty shelf, the README and the installer description.
+- **Themes, Custom colors and the background image are all still here** in Settings. Every theme now sets the accent and a soft wallpaper glow, and pale accents get dark button text. Themes you saved before still work.
+
+## Beta 0.0019 (build 1.52) — October 21, 2026
+
+- **About** (and the README) now say how Cartridge is made: designed, tested and maintained by a retro gamer of 40+ years, with the code written with the help of an AI assistant (Claude).
+
 ## Beta 0.0018 (build 1.51) — October 21, 2026
 
 **Find more: Windows / Mac labels instead of a filter**

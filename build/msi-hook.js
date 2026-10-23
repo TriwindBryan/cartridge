@@ -1,19 +1,21 @@
 // electron-builder "msiProjectCreated" hook: patches the generated WiX project before it is compiled.
 //
-// Why: if Cartridge is open while the .msi installs or upgrades it, Windows can't replace the files in use,
+// Why: if Fulton is open while the .msi installs or upgrades it, Windows can't replace the files in use,
 // so it schedules them for the next restart and asks the user to reboot. People hate that.
-// Fix: close Cartridge before Windows checks for files in use, and never ask for a restart.
+// Fix: close Fulton before Windows checks for files in use, and never ask for a restart.
 'use strict';
 const fs = require('fs');
 
 const PATCH = `
-    <!-- Cartridge: close the app first so its files aren't in use, and never prompt for a restart -->
+    <!-- Fulton: close the app first so its files aren't in use, and never prompt for a restart -->
     <Property Id="REBOOT" Value="ReallySuppress"/>
-    <CustomAction Id="CloseCartridge" Directory="TARGETDIR" ExeCommand='"[System64Folder]taskkill.exe" /F /IM "Cartridge.exe"' Execute="immediate" Return="ignore"/>`;
-const STEP = '<Custom Action="CloseCartridge" Before="InstallValidate"/>';
+    <CustomAction Id="CloseFulton" Directory="TARGETDIR" ExeCommand='"[System64Folder]taskkill.exe" /F /IM "Fulton.exe"' Execute="immediate" Return="ignore"/>
+    <!-- the app used to be called Cartridge: close that one too when upgrading from it -->
+    <CustomAction Id="CloseCartridgeOld" Directory="TARGETDIR" ExeCommand='"[System64Folder]taskkill.exe" /F /IM "Cartridge.exe"' Execute="immediate" Return="ignore"/>`;
+const STEP = '<Custom Action="CloseFulton" Before="InstallValidate"/>\n      <Custom Action="CloseCartridgeOld" Before="InstallValidate"/>';
 
 function patch(xml) {
-  if (xml.includes('Id="CloseCartridge"')) return xml; // already patched
+  if (xml.includes('Id="CloseFulton"')) return xml; // already patched
   let out = xml.replace(/(<MajorUpgrade\b[^>]*\/>)/, `$1${PATCH}`);
   if (out === xml) throw new Error('msi-hook: <MajorUpgrade> not found in the WiX project');
   // add the step to the existing InstallExecuteSequence, or create one

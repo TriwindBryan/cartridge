@@ -40,7 +40,7 @@ function lookup(db, name) {
   return { set: name, desc, title: titleOf(desc), year, maker, board, parent, parentDesc: p ? p[0] : '', src };
 }
 
-/** Everything Cartridge stores about an arcade set found on disk. */
+/** Everything Fulton stores about an arcade set found on disk. */
 function inspect(db, file) {
   const name = setNameOf(file);
   const a = lookup(db, name);

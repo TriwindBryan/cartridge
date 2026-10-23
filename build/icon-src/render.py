@@ -10,8 +10,8 @@ async def shot(pg, svg, out, size):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(); pg = await b.new_page()
-        await shot(pg, here/'cartridge-icon.svg', here/'icon-1024.png', 1024)
-        await shot(pg, here/'cartridge-icon-small.svg', here/'icon-small-256.png', 256)
+        await shot(pg, here/'fulton-icon.svg', here/'icon-1024.png', 1024)
+        await shot(pg, here/'fulton-icon-small.svg', here/'icon-small-256.png', 256)
         await b.close()
     for f in here.glob('*.render.html'): f.unlink()
 asyncio.run(main())

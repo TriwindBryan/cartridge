@@ -10,7 +10,7 @@ const ARCHIVE_URL = `https://codeload.github.com/${REPO}/tar.gz/refs/heads/main`
 const SOURCE_PAGE = 'https://recompendium.com/en/';
 const LICENSE = 'CC BY-SA 4.0';
 
-// Recompendium console id -> Cartridge system id
+// Recompendium console id -> Fulton system id
 const CONSOLES = {
   n64: 'n64', ps1: 'ps1', ps2: 'ps2', ps3: 'ps3', ps4: 'ps4', ps5: 'ps5', psp: 'psp', vita: 'vita',
   x360: 'x360', xbox: 'xbox', xboxone: 'xone', xsx: 'xsx',
@@ -215,7 +215,7 @@ function candidatesFromFiles(files) {
 }
 
 async function fetchRecompendium() {
-  const res = await fetch(ARCHIVE_URL, { headers: { 'User-Agent': 'Cartridge-Launcher' } });
+  const res = await fetch(ARCHIVE_URL, { headers: { 'User-Agent': 'Fulton-Launcher' } });
   if (!res.ok) throw new Error(`Couldn't load Recompendium (${res.status}).`);
   const buf = Buffer.from(await res.arrayBuffer());
   return candidatesFromFiles(untarGz(buf, (p) => /\/src\/data\/((recomps|ports)\/[^/]+\.ya?ml|stats\.json)$/.test(p)));

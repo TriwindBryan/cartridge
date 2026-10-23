@@ -4,41 +4,49 @@
   <meta charset="utf-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https: data: file:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; font-src 'self' file: data:">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Cartridge</title>
+  <title>Fulton</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <script src="platform.js"></script>
-  <!-- airbrushed 90s sky: stars, flare, neon grid floor -->
-  <div class="sky" aria-hidden="true">
-    <div class="stars"></div>
-    <div class="flare"></div>
-    <div class="sun"></div>
-    <div class="floor"></div>
-  </div>
+  <!-- the wallpaper behind the window: soft theme glows, or your own picture -->
+  <div class="sky" aria-hidden="true"></div>
 
   <div class="app">
-    <header class="top">
-      <div class="logo" aria-label="Cartridge"><span data-text="CARTRIDGE">CARTRIDGE</span><button class="ver" id="ver" data-view="about" title="About Cartridge"></button></div>
+    <aside class="side" aria-label="Fulton">
+      <div class="side-brand">
+        <svg class="brand-mark" viewBox="0 0 128 128" aria-hidden="true"><rect width="128" height="128" rx="28" class="bm-bg"/><ellipse cx="64" cy="47" rx="27" ry="31" class="bm-balloon"/><path d="M44 68L53 95M84 68L75 95M64 84V95" class="bm-string"/><rect x="45" y="95" width="38" height="21" rx="4" class="bm-cart"/></svg>
+        <div class="brand-text"><b>Fulton</b><button class="ver" id="ver" data-view="about" title="About Fulton"></button></div>
+      </div>
       <nav class="tabs" id="tabs">
-        <button class="tab" data-view="shelf">Games <span class="count" id="c-all"></span></button>
-        <button class="tab" data-view="roms">My ROMs <span class="count" id="c-roms"></span></button>
-        <button class="tab" data-view="discover">Find more <span class="count new-count" id="c-new" hidden></span></button>
-        <button class="tab" data-view="settings">Settings</button>
-        <button class="tab" data-view="help">Help</button>
+        <span class="side-label">Library</span>
+        <button class="tab" data-view="shelf"><i class="ico" aria-hidden="true">▦</i><span class="tl">Games</span> <span class="count" id="c-all"></span></button>
+        <button class="tab" data-view="roms"><i class="ico" aria-hidden="true">◉</i><span class="tl">My ROMs</span> <span class="count" id="c-roms"></span></button>
+        <span class="side-label">Discover</span>
+        <button class="tab" data-view="discover"><i class="ico" aria-hidden="true">⌕</i><span class="tl">Find more</span> <span class="count new-count" id="c-new" hidden></span></button>
+        <span class="side-label">App</span>
+        <button class="tab" data-view="settings"><i class="ico" aria-hidden="true">⚙</i><span class="tl">Settings</span></button>
+        <button class="tab" data-view="help"><i class="ico" aria-hidden="true">?</i><span class="tl">Help</span></button>
       </nav>
-      <label class="search">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M16 16l5 5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
-        <input id="search" type="search" placeholder="Search games" autocomplete="off">
-      </label>
-      <button class="btn3d cyan" id="btn-load-rom" title="Pick ROM files">+ Load ROM</button>
-      <button class="btn3d purple small" id="btn-add-roms" title="Add a folder of ROMs (searched every time Cartridge starts)">ROM Folder</button>
-      <button class="update-pill" id="update-pill" hidden title="A new version of Cartridge is out"></button>
-      <button class="support-btn" id="btn-support" title="Cartridge is free. If you enjoy it, you can support it on Ko-fi."><span aria-hidden="true">♥</span><span class="lbl">Support</span></button>
-    </header>
+      <div class="side-foot">
+        <button class="update-pill" id="update-pill" hidden title="A new version of Fulton is out"></button>
+        <button class="support-btn" id="btn-support" title="Fulton is free. If you enjoy it, you can support it on Ko-fi."><span aria-hidden="true">♥</span><span class="lbl">Support</span></button>
+      </div>
+    </aside>
 
-    <section class="hero" id="detail" aria-live="polite"></section>
+    <div class="main">
+      <header class="top">
+        <label class="search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M16 16l5 5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+          <input id="search" type="search" placeholder="Search games" autocomplete="off">
+        </label>
+        <button class="btn3d cyan" id="btn-load-rom" title="Pick ROM files">+ Load ROM</button>
+        <button class="btn3d purple small" id="btn-add-roms" title="Add a folder of ROMs (searched every time Fulton starts)">ROM Folder</button>
+      </header>
+
+  <section class="hero" id="detail" aria-live="polite"></section>
     <section class="view" id="view"></section>
+    </div>
   </div>
 
   <aside class="info" id="info" aria-label="Game details" aria-hidden="true"></aside>

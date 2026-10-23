@@ -1,5 +1,5 @@
 @echo off
-title Build Cartridge installer
+title Build Fulton installer
 cd /d "%~dp0"
 
 where node >nul 2>nul
@@ -9,7 +9,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo  Building the Cartridge installer. The first time, this downloads Electron and the WiX MSI tools (a few minutes).
+echo  Building the Fulton installer. The first time, this downloads Electron and the WiX MSI tools (a few minutes).
 echo.
 call npm install --no-audit --no-fund || goto :fail
 call npm test || goto :fail
